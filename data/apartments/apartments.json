@@ -1,0 +1,272 @@
+{
+ "1-02-01": {
+  "number": "1-02-201",
+  "floor": 2,
+  "rooms": 2,
+  "area": 154.59,
+  "price": 626646024.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-02-02": {
+  "number": "1-02-202",
+  "floor": 2,
+  "rooms": 2,
+  "area": 163.41,
+  "price": 633344478.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-02-03": {
+  "number": "1-02-203",
+  "floor": 2,
+  "rooms": 2,
+  "area": 138.5,
+  "price": 547019600.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-02-04": {
+  "number": "1-02-204",
+  "floor": 2,
+  "rooms": 2,
+  "area": 173.3,
+  "price": 689352740.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-03-01": {
+  "number": "1-03-301",
+  "floor": 3,
+  "rooms": 2,
+  "area": 162.38,
+  "price": 667446752.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-03-02": {
+  "number": "1-03-302",
+  "floor": 3,
+  "rooms": 2,
+  "area": 160.82,
+  "price": 546321622.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-03-03": {
+  "number": "1-03-303",
+  "floor": 3,
+  "rooms": 2,
+  "area": 143.11,
+  "price": 495418198.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-03-04": {
+  "number": "1-03-304",
+  "floor": 3,
+  "rooms": 3,
+  "area": 181.84,
+  "price": 740179720.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-04-01": {
+  "number": "1-04-401",
+  "floor": 4,
+  "rooms": 2,
+  "area": 159.45,
+  "price": 682254660.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-04-02": {
+  "number": "1-04-402",
+  "floor": 4,
+  "rooms": 2,
+  "area": 157.91,
+  "price": 558401342.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-04-03": {
+  "number": "1-04-403",
+  "floor": 4,
+  "rooms": 2,
+  "area": 138.85,
+  "price": 491001370.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-04-04": {
+  "number": "1-04-404",
+  "floor": 4,
+  "rooms": 2,
+  "area": 180.06,
+  "price": 756035928.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-05-02": {
+  "number": "1-05-502",
+  "floor": 5,
+  "rooms": 2,
+  "area": 143.13,
+  "price": 516799491.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-05-03": {
+  "number": "1-05-503",
+  "floor": 5,
+  "rooms": 3,
+  "area": 181.52,
+  "price": 839330328.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-06-02": {
+  "number": "1-06-602",
+  "floor": 6,
+  "rooms": 2,
+  "area": 138.75,
+  "price": 568125750.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-06-03": {
+  "number": "1-06-603",
+  "floor": 6,
+  "rooms": 2,
+  "area": 179.92,
+  "price": 866080904.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-07-02": {
+  "number": "1-07-702",
+  "floor": 7,
+  "rooms": 2,
+  "area": 143.14,
+  "price": 609533062.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "1-08-02": {
+  "number": "1-08-802",
+  "floor": 8,
+  "rooms": 4,
+  "area": 329.29,
+  "price": 1598735879.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-02-04": {
+  "number": "2-02-204",
+  "floor": 2,
+  "rooms": 3,
+  "area": 187.71,
+  "price": 563805756.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-02-05": {
+  "number": "2-02-205",
+  "floor": 2,
+  "rooms": 2,
+  "area": 148.85,
+  "price": 534445925.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-03-04": {
+  "number": "2-03-304",
+  "floor": 3,
+  "rooms": 3,
+  "area": 186.78,
+  "price": 571229274.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-03-05": {
+  "number": "2-03-305",
+  "floor": 3,
+  "rooms": 2,
+  "area": 138.49,
+  "price": 435841879.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-04-05": {
+  "number": "2-04-405",
+  "floor": 4,
+  "rooms": 2,
+  "area": 138.52,
+  "price": 445300244.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-06-01": {
+  "number": "2-06-601",
+  "floor": 6,
+  "rooms": 2,
+  "area": 139.43,
+  "price": 471817177.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-06-03": {
+  "number": "2-06-603",
+  "floor": 6,
+  "rooms": 3,
+  "area": 187.7,
+  "price": 678967210.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-06-04": {
+  "number": "2-06-604",
+  "floor": 6,
+  "rooms": 2,
+  "area": 138.6,
+  "price": 469008540.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-07-02": {
+  "number": "2-07-702",
+  "floor": 7,
+  "rooms": 3,
+  "area": 186.85,
+  "price": 702929700.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-07-03": {
+  "number": "2-07-703",
+  "floor": 7,
+  "rooms": 2,
+  "area": 137.86,
+  "price": 485170698.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-08-02": {
+  "number": "2-08-802",
+  "floor": 8,
+  "rooms": 3,
+  "area": 187.36,
+  "price": 731959312.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ },
+ "2-08-03": {
+  "number": "2-08-803",
+  "floor": 8,
+  "rooms": 2,
+  "area": 137.81,
+  "price": 503640426.0,
+  "status": "AVAILABLE",
+  "statusText": "Свободно"
+ }
+}

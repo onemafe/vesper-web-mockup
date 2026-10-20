@@ -1,0 +1,726 @@
+{
+ "version": 1,
+ "coordinateSystem": "UE: X forward, Y right, Z up, left-handed, centimeters; rotation in degrees",
+ "image": {
+  "fileNameFormat": "floor_{id}.png",
+  "width": 3840,
+  "height": 2160
+ },
+ "camera": {
+  "sensorWidthMm": 23.76,
+  "fovAxis": "horizontal"
+ },
+ "projectionNote": "pixel: [u*w, v*w, w] = projection(3x4) * [X, Y, Z, 1], u = right, v = down from top-left of the image (shots[].image); floorHomography(3x3) * [X, Y, 1] for points on Z = floorZ, its inverse maps a pixel back to the floor. anchors[].pivot: which point of the app button sits at 'world' (0..1 of button size, x from left, y from top).",
+ "shots": [
+  {
+   "id": "F1",
+   "title": "1 этаж",
+   "file": "floor_F1.png",
+   "rig": {
+    "pivot": [
+     -7740.0,
+     596.0,
+     14355.0
+    ],
+    "yaw": 231.0,
+    "pitch": -50.0,
+    "arm": 6883.0
+   },
+   "floorZ": 13745.0,
+   "location": [
+    -4955.693314707656,
+    4034.332408589046,
+    19627.683901987926
+   ],
+   "rotation": {
+    "pitch": -49.99999999999994,
+    "yaw": -128.9999999999999,
+    "roll": 2.96883882035113e-14
+   },
+   "focalLengthMm": 25.0,
+   "hFovDeg": 50.83413405394583,
+   "vFovDeg": 29.93058008623808,
+   "image": {
+    "width": 3840,
+    "height": 2160
+   },
+   "projection": [
+    [
+     2363.3065752125244,
+     -3501.8250022322904,
+     -1470.805330788438,
+     54707850.80517274
+    ],
+    [
+     1510.9468814630172,
+     1865.8640933714387,
+     -3424.449674790658,
+     67174289.13249004
+    ],
+    [
+     -0.4045193498899228,
+     -0.4995397949424752,
+     -0.7660444431189773,
+     15046.313930610633
+    ]
+   ],
+   "floorHomography": [
+    [
+     2363.3065752125244,
+     -3501.8250022322904,
+     34491631.533485666
+    ],
+    [
+     1510.9468814630172,
+     1865.8640933714387,
+     20105228.352492444
+    ],
+    [
+     -0.4045193498899228,
+     -0.4995397949424752,
+     4517.03305994029
+    ]
+   ],
+   "anchors": [
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces3",
+     "widget": "Widget",
+     "text": "OFFICE SUITES",
+     "world": [
+      -10659.871104,
+      1596.949534,
+      13744.755649
+     ],
+     "pixel": [
+      461.6,
+      869.0
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces4",
+     "widget": "Widget",
+     "text": "PARCEL STORAGE",
+     "world": [
+      -7819.871104,
+      -893.0504659999999,
+      13744.755649
+     ],
+     "pixel": [
+      2355.0,
+      815.1
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces5",
+     "widget": "Widget",
+     "text": "RESTROOM",
+     "world": [
+      -8469.871104,
+      -93.05046600000003,
+      13764.755649
+     ],
+     "pixel": [
+      1852.3,
+      886.1
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces6",
+     "widget": "Widget",
+     "text": "PET WASH STATION",
+     "world": [
+      -8699.244565076737,
+      -239.76931606428167,
+      13744.755649
+     ],
+     "pixel": [
+      1811.3,
+      798.7
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces7",
+     "widget": "Widget",
+     "text": "BIKE HUB",
+     "world": [
+      -6979.871104,
+      -1173.050466,
+      13764.755649
+     ],
+     "pixel": [
+      2790.3,
+      923.1
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces8",
+     "widget": "Widget",
+     "text": "STROLLER ROOM",
+     "world": [
+      -6711.427385330753,
+      -1245.1208757438485,
+      13744.755649
+     ],
+     "pixel": [
+      2927.3,
+      973.0
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces9",
+     "widget": "Widget",
+     "text": "STROLLER ROOM",
+     "world": [
+      -8729.871104,
+      626.9495340000001,
+      13744.755649
+     ],
+     "pixel": [
+      1508.0,
+      1045.3
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem3",
+     "widget": "Widget",
+     "index": 8,
+     "world": [
+      -7696.01660748639,
+      -3055.172582257268,
+      13744.755649
+     ],
+     "pixel": [
+      2949.0,
+      303.3
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem2",
+     "widget": "Widget",
+     "index": 5,
+     "world": [
+      -6072.818304,
+      -1950.060451000002,
+      13778.585844
+     ],
+     "pixel": [
+      3398.0,
+      905.8
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem5",
+     "widget": "Widget",
+     "index": 10,
+     "world": [
+      -7331.333628953412,
+      -2879.6677994336287,
+      13744.755649
+     ],
+     "pixel": [
+      3054.4,
+      409.8
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem6",
+     "widget": "Widget",
+     "index": 11,
+     "world": [
+      -7969.871104,
+      -353.05046600000014,
+      13694.755649
+     ],
+     "pixel": [
+      2132.6,
+      952.3
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem7",
+     "widget": "Widget",
+     "index": 16,
+     "world": [
+      -8157.966974365908,
+      -2196.3063327482528,
+      13744.755649
+     ],
+     "pixel": [
+      2569.2,
+      413.0
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem4",
+     "widget": "Widget",
+     "index": 3,
+     "world": [
+      -6555.323147176917,
+      -667.3946211023415,
+      13728.585236499395
+     ],
+     "pixel": [
+      2842.5,
+      1199.2
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem",
+     "widget": "Widget",
+     "index": 0,
+     "world": [
+      -9372.818303966307,
+      2599.9395485625937,
+      13778.585843721936
+     ],
+     "pixel": [
+      456.3,
+      1529.1
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    }
+   ]
+  },
+  {
+   "id": "P-1",
+   "title": "Паркинг −1",
+   "file": "floor_P-1.png",
+   "rig": {
+    "pivot": [
+     -7740.0,
+     596.0,
+     14355.0
+    ],
+    "yaw": 231.0,
+    "pitch": -50.0,
+    "arm": 6883.0
+   },
+   "floorZ": 13360.0,
+   "location": [
+    -4955.693314707656,
+    4034.332408589046,
+    19627.683901987926
+   ],
+   "rotation": {
+    "pitch": -49.99999999999997,
+    "yaw": -128.99999999999991,
+    "roll": 2.4740323502926083e-14
+   },
+   "focalLengthMm": 25.0,
+   "hFovDeg": 50.83413405394583,
+   "vFovDeg": 29.93058008623808,
+   "image": {
+    "width": 3840,
+    "height": 2160
+   },
+   "projection": [
+    [
+     2363.306575212523,
+     -3501.8250022322914,
+     -1470.8053307884384,
+     54707850.80517274
+    ],
+    [
+     1510.9468814630195,
+     1865.864093371439,
+     -3424.4496747906564,
+     67174289.13249001
+    ],
+    [
+     -0.4045193498899227,
+     -0.4995397949424747,
+     -0.7660444431189777,
+     15046.313930610639
+    ]
+   ],
+   "floorHomography": [
+    [
+     2363.306575212523,
+     -3501.8250022322914,
+     35057891.585839204
+    ],
+    [
+     1510.9468814630195,
+     1865.864093371439,
+     21423641.477286838
+    ],
+    [
+     -0.4045193498899227,
+     -0.4995397949424747,
+     4811.960170541097
+    ]
+   ],
+   "anchors": [
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "Widget",
+     "world": [
+      -6300.0,
+      -2320.0,
+      13200.0
+     ],
+     "pixel": [
+      3301.2,
+      940.0
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "WidgetPool",
+     "world": [
+      -7800.0,
+      -1030.0,
+      13360.0
+     ],
+     "pixel": [
+      2385.2,
+      909.8
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": false
+    },
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "WidgetStorage",
+     "world": [
+      -9260.0,
+      2070.0,
+      13360.0
+     ],
+     "pixel": [
+      787.5,
+      1501.2
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "WidgetSalt",
+     "world": [
+      -7020.0,
+      -1430.0,
+      13360.0
+     ],
+     "pixel": [
+      2806.0,
+      974.0
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": false
+    },
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "WidgetSalt1",
+     "world": [
+      -8380.0,
+      -2400.0,
+      13360.0
+     ],
+     "pixel": [
+      2516.6,
+      455.7
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": false
+    },
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "WidgetManChange",
+     "world": [
+      -7310.0,
+      -1490.0,
+      13360.0
+     ],
+     "pixel": [
+      2701.6,
+      892.5
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": false
+    },
+    {
+     "class": "BP_Parking_01",
+     "actor": "BP_Parking_01",
+     "widget": "WidgetWomanChange",
+     "world": [
+      -8070.0,
+      -2670.0,
+      13360.0
+     ],
+     "pixel": [
+      2692.4,
+      451.5
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": false
+    }
+   ]
+  },
+  {
+   "id": "P-2",
+   "title": "Паркинг −2",
+   "file": "floor_P-2.png",
+   "rig": {
+    "pivot": [
+     -7740.0,
+     596.0,
+     14355.0
+    ],
+    "yaw": 231.0,
+    "pitch": -50.0,
+    "arm": 6883.0
+   },
+   "floorZ": 13060.0,
+   "location": [
+    -4955.693314707656,
+    4034.332408589046,
+    19627.683901987926
+   ],
+   "rotation": {
+    "pitch": -49.9999999999999,
+    "yaw": -128.99999999999986,
+    "roll": -2.968838820351126e-14
+   },
+   "focalLengthMm": 25.0,
+   "hFovDeg": 50.83413405394583,
+   "vFovDeg": 29.93058008623808,
+   "image": {
+    "width": 3840,
+    "height": 2160
+   },
+   "projection": [
+    [
+     2363.306575212525,
+     -3501.825002232292,
+     -1470.8053307884343,
+     54707850.80517268
+    ],
+    [
+     1510.9468814630168,
+     1865.8640933714355,
+     -3424.4496747906605,
+     67174289.13249008
+    ],
+    [
+     -0.40451934988992283,
+     -0.4995397949424758,
+     -0.7660444431189769,
+     15046.313930610628
+    ]
+   ],
+   "floorHomography": [
+    [
+     2363.306575212525,
+     -3501.825002232292,
+     35499133.18507573
+    ],
+    [
+     1510.9468814630168,
+     1865.8640933714355,
+     22450976.379724056
+    ],
+    [
+     -0.40451934988992283,
+     -0.4995397949424758,
+     5041.77350347679
+    ]
+   ],
+   "anchors": [
+    {
+     "class": "BP_Parking_02",
+     "actor": "BP_Parking_02",
+     "widget": "Widget",
+     "world": [
+      -8380.0,
+      -3060.0,
+      13020.0
+     ],
+     "pixel": [
+      2649.3,
+      422.1
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_Parking_02",
+     "actor": "BP_Parking_02",
+     "widget": "WidgetStorage",
+     "world": [
+      -9020.0,
+      1940.0,
+      13080.0
+     ],
+     "pixel": [
+      955.0,
+      1605.7
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_Parking_02",
+     "actor": "BP_Parking_02",
+     "widget": "WidgetStorage1",
+     "world": [
+      -7770.0,
+      -2780.0,
+      13040.0
+     ],
+     "pixel": [
+      2805.4,
+      583.2
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    }
+   ]
+  }
+ ]
+}

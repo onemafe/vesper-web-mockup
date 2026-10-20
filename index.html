@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Погодинская — облёт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500&family=Inter:wght@600&display=swap" rel="stylesheet">
+<style>
+  /* Макет Figma: файл rXyl4vfPbiSi6dbmNmUYxK, фреймы 925:7868 (общий вид) и 925:7950 (бургер-меню). Экран 430×932. */
+  :root {
+    --green-70: rgba(38, 87, 70, 0.7);
+    --menu-text: #b9d2c2;
+    --btn-call: #57967a;
+    --btn-pick: #b6d5b9;
+    --btn-pick-text: #102318;
+    --page-bg: #2c2c2c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--page-bg); overflow: hidden; }
+  body { font-family: Manrope, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+  /* Экран дизайна фиксированного размера, вписывается в окно через scale (см. fit()). */
+  #screen {
+    position: absolute; left: 50%; top: 50%;
+    width: 430px; height: 932px;
+    transform-origin: center center;
+    overflow: hidden; background: #000;
+  }
+  #pano { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #pano.dragging { cursor: grabbing; }
+  /* 3D поверх кадра (подсветки квартир), события проходят насквозь в #pano. */
+  #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+  /* Шапка: бургер + логотип (+ пустое место справа под компас/язык). */
+  .header {
+    position: absolute; top: 57px; left: 50%; transform: translateX(-50%);
+    width: 398px; display: flex; align-items: center; justify-content: space-between;
+    pointer-events: none;
+  }
+  .header > * { pointer-events: auto; }
+  .glass {
+    width: 50px; height: 50px; border-radius: 50%; border: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(250, 250, 250, 0.6);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 0 0 0.5px rgba(166, 166, 166, 0.6), 0 8px 15px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+  }
+  .glass img, .glass svg { width: 24px; height: 24px; }
+  .logo { width: 201.5px; height: 44.425px; display: block; }
+  .spacer { width: 50px; height: 50px; }
+  .lang { font-size: 14px; color: #4a4a4a; text-transform: uppercase; }
+
+  /* Иконки зон САД / ЛОББИ (925:7945, 925:7941) — стоят в мировой точке UE, позицию каждый кадр ставит overlay.js
+     (центр плашки = точка, как Pivot 0.5×0.5 у WidgetComponent в UE). Пока без действий. */
+  .place {
+    position: absolute; left: 0; top: 0; height: 44px; padding: 0 18px 0 48px;
+    display: none; align-items: center; border-radius: 200px; background: rgba(38, 87, 70, 0.8);
+    color: #57967a; font-size: 16px; font-weight: 500; letter-spacing: 0.8px; line-height: 1; white-space: nowrap;
+    pointer-events: none;
+  }
+  .place .ico { position: absolute; left: 4px; top: 4px; width: 36px; height: 36px; border-radius: 200px;
+                background: rgba(64, 145, 117, 0.5); overflow: hidden; }
+  .place .ico img { position: absolute; display: block; }
+  .place.garden .ico img { left: 8.51px; top: 8.51px; width: 18.33px; height: 18.33px; }
+  .place.lobby { padding-right: 17px; pointer-events: auto; cursor: pointer; }   /* открывает этажи */
+  .place.lobby .ico img { left: 5px; top: 5px; width: 26px; height: 26px; }
+
+  /* 5 круглых кнопок внизу (пока без действий). */
+  .dock {
+    position: absolute; top: 770px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 23px; align-items: center;
+  }
+  .dock .b { position: relative; width: 50px; height: 50px; border-radius: 200px; background: var(--green-70); overflow: hidden; }
+  .dock .b img { position: absolute; display: block; }
+  .dock .light img   { left: 9px;  top: 9px;  width: 32px; height: 32px; object-fit: contain; }
+  .dock .fav img     { left: 10px; top: 10px; width: 29px; height: 29px; }
+  .dock .filters     { background: none; cursor: pointer; transition: box-shadow .2s; }
+  .dock .filters img { left: 0; top: 0; width: 50px; height: 50px; }
+  .dock .filters.on  { box-shadow: 0 0 0 2px #b6d5b9; }
+  .dock .map img     { left: 12px; top: 12px; width: 25px; height: 25px; }
+  .dock .share img   { left: 11px; top: 11px; width: 29px; height: 29px; transform: scaleX(-1); }
+
+  /* Попап выбранной квартиры (фрейм 925:8781): карточка 925:8809 + ряд «стрелки / закрыть» 925:8796, 925:8807. */
+  .apt-popup { opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s; }
+  .apt-popup.open { opacity: 1; visibility: visible; }
+  .apt-card {
+    position: absolute; left: 44px; top: 410px; width: 342px; height: 283px;
+    border-radius: 10px; overflow: hidden; background: var(--green-70);
+    color: #adadad; font-size: 14px; line-height: 1; text-transform: uppercase;
+  }
+  /* Лист плана застройщика (Plans/<id>.jpg) — кроп как в макете: план и схема этажа, без полей листа. */
+  .apt-plan { position: absolute; left: -7px; top: 0; width: 365px; height: 170px; overflow: hidden; background: #fff; }
+  .apt-plan img { position: absolute; left: -5.05%; top: -44.33%; width: 121.59%; height: 184.7%; max-width: none; }
+  .apt-card .num   { position: absolute; left: 20px; top: 175px; font-weight: 500; }
+  .apt-card .kind  { position: absolute; left: 21px; top: 200px; }
+  .apt-card .floor { position: absolute; left: 159px; top: 200px; }
+  .apt-card .heart { position: absolute; left: 293px; top: 200px; width: 29px; height: 29px; }
+  .apt-buttons { position: absolute; left: 20px; top: 243px; display: flex; gap: 14px; }
+  /* ВИДЫ / ПЛАН / ГАЛЕРЕЯ — пока без действий. */
+  .apt-buttons span {
+    height: 30px; border-radius: 5px; background: #104b37;
+    display: flex; align-items: center; justify-content: center;
+    color: #b9d2c2; font-size: 16px;
+  }
+  .apt-nav { position: absolute; top: 705px; width: 45px; height: 45px; border: 0; padding: 0; background: none; cursor: pointer; }
+  .apt-nav img { display: block; width: 45px; height: 45px; }
+  .apt-nav.left  { left: 44px; }
+  .apt-nav.right { left: 341px; transform: scaleX(-1); }
+  .apt-nav.close { left: 193px; border-radius: 180px; background: var(--green-70); }
+  .apt-nav.close img { width: 12.6px; height: 12.6px; margin: auto; }
+
+  /* 3D-план квартиры на весь экран (кнопка ПЛАН попапа). Макета нет: только крестик, как у меню. */
+  .plan3d {
+    position: absolute; inset: 0; background: #000; overflow: hidden; touch-action: none; cursor: grab;
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .plan3d.open { opacity: 1; visibility: visible; }
+  .plan3d img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; }
+  .plan3d .header { z-index: 1; }
+  .plan3d .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                     color: #b9d2c2; font-size: 14px; pointer-events: none; }
+  .apt-buttons .plan-btn { cursor: pointer; }
+
+  /* Этажи: лобби, паркинг −1, −2 (фреймы 925:9472, 925:9536, 925:9596). Кадры renders/Floors_Test/ сняты одной камерой —
+     переключение этажа меняет картинку, панорама/масштаб остаются. Кнопки на кадре стоят по якорям UE (см. скрипт). */
+  .floors {
+    position: absolute; inset: 0; background: #000; overflow: hidden; touch-action: none; cursor: grab;
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .floors.open { opacity: 1; visibility: visible; }
+  .floors .shot { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; visibility: hidden; }
+  .floors .shot.on { visibility: visible; }
+  .floors .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                     color: #b9d2c2; font-size: 14px; pointer-events: none; }
+  .floors .header { z-index: 1; }
+  .floor-pins > * { position: absolute; left: 0; top: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+  /* «360» (925:9474) — панорама точки обзора, стоит в точке её камеры. */
+  .pin-360 {
+    width: 36px; height: 36px; border-radius: 131px; background: rgba(38, 87, 70, 0.5);
+    color: #b6d5b9; font-size: 13.09px; line-height: 1;
+  }
+  /* Переход на паркинг (925:9478): «Parking -1  M8 ›». */
+  .pin-park {
+    height: 45px; padding: 0 25px; border-radius: 12px; background: rgba(38, 87, 70, 0.7);
+    display: flex; align-items: center; gap: 10px; color: #b9d2c2; font-size: 16px; line-height: 1; white-space: pre;
+  }
+  .pin-park img { width: 11px; height: 6px; transform: rotate(-90deg) scaleY(-1); }
+  /* Переключатель этажей (925:9481). */
+  .floor-tabs { position: absolute; left: 24px; top: 165px; width: 81px; display: flex; flex-direction: column; gap: 8px; z-index: 1; }
+  .floor-tabs button {
+    height: 45px; border: 0; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px; line-height: 1;
+    background: rgba(38, 87, 70, 0.7); color: #b9d2c2;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .floor-tabs button.on { background: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
+  /* Крестик (925:9488) — назад к общему виду. */
+  .floors-close {
+    position: absolute; left: 193px; top: 775px; width: 45px; height: 45px; border: 0; padding: 0; z-index: 1;
+    border-radius: 180px; background: rgba(38, 87, 70, 0.7); cursor: pointer;
+  }
+  .floors-close img { display: block; width: 12.6px; height: 12.6px; margin: auto; }
+  /* Панорама 360 точки обзора (pano.js) — поверх этажей; макета нет, только крестик как у этажей. */
+  .pano {
+    position: absolute; inset: 0; z-index: 2; background: #000; overflow: hidden; touch-action: none; cursor: grab;   /* выше вкладок и шапки этажей (z-index 1) */
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .pano.open { opacity: 1; visibility: visible; }
+  .pano canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .pano .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                   color: #b9d2c2; font-size: 14px; pointer-events: none; }
+
+  /* Адресная строка Safari внизу (925:8821) — часть макета, видна на всех экранах (поверх меню), без действий. */
+  .safari {
+    position: absolute; left: 0; top: 840px; width: 430px; height: 92px; padding: 8px 16px; z-index: 3;   /* выше панорамы */
+    display: flex; gap: 8px; align-items: flex-start;
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  }
+  .safari > * {
+    height: 48px; border-radius: 1000px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(153, 153, 153, 0.17);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 1.25px 0 0 -0.75px #a6a6a6, -1.25px 0 0 -0.75px #a6a6a6, 0 0 0 0.5px #a6a6a6, 0 8px 15px rgba(0, 0, 0, 0.04);
+  }
+  .safari .round { width: 48px; }
+  .safari .round svg, .safari .round img { width: 28px; height: 28px; display: block; }
+  .safari .url {
+    flex: 1; justify-content: flex-start; padding: 0 12px 0 16px;
+    color: #fff; font-size: 17px; line-height: 22px; white-space: nowrap; overflow: hidden;
+  }
+
+  .hint {
+    position: absolute; left: 24px; right: 24px; top: 140px;
+    padding: 10px 14px; border-radius: 14px;
+    background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 13px; line-height: 1.4; text-align: center;
+    pointer-events: none; display: none;
+  }
+
+  /* Бургер-меню (фрейм 925:7950). */
+  .menu {
+    position: absolute; inset: 0;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .menu.open { opacity: 1; visibility: visible; }
+  .menu-list {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 292px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .menu-list a {
+    height: 45px; border-radius: 200px; background: var(--green-70);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--menu-text); font-size: 16px; text-decoration: none;
+  }
+  .menu-cta {
+    position: absolute; top: 714px; left: 50%; transform: translateX(-50%);
+    width: 178px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .menu-cta a {
+    padding: 14px 24px; border-radius: 100px; text-align: center; text-decoration: none;
+    font-family: Inter, system-ui, sans-serif; font-weight: 600; font-size: 14px;
+  }
+  .menu-cta .call { background: var(--btn-call); color: #fff; }
+  .menu-cta .pick { background: var(--btn-pick); color: var(--btn-pick-text); }
+</style>
+</head>
+<body>
+<div id="screen">
+  <canvas id="pano"></canvas>
+  <canvas id="overlay"></canvas>
+
+  <div class="hint" id="hint"></div>
+
+  <div class="header">
+    <button class="glass" id="burger" aria-label="Меню"><img src="assets/icon-burger.svg" alt=""></button>
+    <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
+    <div class="spacer"></div>
+  </div>
+
+  <div class="place garden" data-place="garden"><div class="ico"><img src="assets/icon-garden.svg" alt=""></div>САД</div>
+  <div class="place lobby" data-place="lobby"><div class="ico"><img src="assets/icon-lobby.png" alt=""></div>ЛОББИ</div>
+
+  <div class="dock">
+    <div class="b light"><img src="assets/icon-light.png" alt=""></div>
+    <div class="b fav"><img src="assets/icon-favorite.svg" alt=""></div>
+    <div class="b filters" id="apts" role="button" aria-label="Квартиры"><img src="assets/btn-filters.svg" alt=""></div>
+    <div class="b map"><img src="assets/icon-map.svg" alt=""></div>
+    <div class="b share"><img src="assets/icon-share.svg" alt=""></div>
+  </div>
+
+  <div class="apt-popup" id="aptPopup">
+    <div class="apt-card">
+      <div class="apt-plan"><img id="aptPlan" alt=""></div>
+      <div class="num" id="aptNum"></div>
+      <div class="kind" id="aptKind"></div>
+      <div class="floor" id="aptFloor"></div>
+      <img class="heart" src="assets/icon-heart-outline.svg" alt="">
+      <div class="apt-buttons">
+        <span style="width: 77px">Виды</span>
+        <span style="width: 100px" class="plan-btn" id="aptPlanBtn" role="button">План</span>
+        <span style="width: 97px">Галерея</span>
+      </div>
+    </div>
+    <button class="apt-nav left" id="aptLeft" aria-label="Камера влево"><img src="assets/btn-arrow.svg" alt=""></button>
+    <button class="apt-nav close" id="aptClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+    <button class="apt-nav right" id="aptRight" aria-label="Камера вправо"><img src="assets/btn-arrow.svg" alt=""></button>
+  </div>
+
+  <div class="plan3d" id="plan3d">
+    <img id="plan3dImg" alt="" draggable="false">
+    <div class="loading" id="plan3dLoading">Загрузка…</div>
+    <div class="header">
+      <button class="glass" id="plan3dClose" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="spacer"></div>
+    </div>
+  </div>
+
+  <div class="floors" id="floors">
+    <div class="floor-shots" id="floorShots"></div>
+    <div class="floor-pins" id="floorPins"></div>
+    <div class="loading" id="floorsLoading">Загрузка…</div>
+    <div class="header">
+      <button class="glass" id="floorsBurger" aria-label="Меню"><img src="assets/icon-burger.svg" alt=""></button>
+      <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
+      <div class="spacer"></div>
+    </div>
+    <div class="floor-tabs" id="floorTabs">
+      <button data-floor="F1">Lobby</button>
+      <button data-floor="P-1">– 1</button>
+      <button data-floor="P-2">– 2</button>
+    </div>
+    <button class="floors-close" id="floorsClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+  </div>
+
+  <div class="pano" id="panoView">
+    <canvas id="panoCanvas"></canvas>
+    <div class="loading" id="panoLoading">Загрузка…</div>
+    <button class="floors-close" id="panoClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+  </div>
+
+  <div class="menu" id="menu">
+    <div class="header">
+      <button class="glass" id="close" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
+      <div class="glass lang">рус</div>
+    </div>
+    <nav class="menu-list">
+      <a href="#">О ПРОЕКТЕ</a>
+      <a href="#">РАЙОН</a>
+      <a href="#" id="menuOverview">ОБЩИЙ ВИД</a>
+      <a href="#" id="menuFloors">ЛОББИ И ПАРКОВКА</a>
+      <a href="#">САД</a>
+      <a href="#">ИЗБРАННОЕ</a>
+    </nav>
+    <div class="menu-cta">
+      <a href="#" class="call">Заказать звонок</a>
+      <a href="#" class="pick">Выбрать квартиру</a>
+    </div>
+  </div>
+  <div class="safari" aria-hidden="true">
+    <div class="round">
+      <svg viewBox="0 0 28 28" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8l-6 6 6 6"/></svg>
+    </div>
+    <div class="url">https://www.pogodinskaya.com</div>
+    <div class="round"><img src="assets/icon-more.svg" alt=""></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const W = 430, H = 932;
+  // Облёт: кадр снят с yaw = startYaw + угол (см. Docs/ORBIT.md, data/orbit_main/camera.json).
+  // Наборы (ue/orbit_render.py): HQ — orbit_000…179 через 2°; LQ (тест) — test_000…023 через 15°.
+  const SETS = {
+    HQ: { count: 180, stepDeg: 2,  file: k => `orbit_${pad(k)}.webp` },
+    LQ: { count: 24,  stepDeg: 15, file: k => `test_${pad(k)}.webp` },
+  };
+  function pad(n) { return String(n).padStart(3, '0'); }
+  const SET = new URLSearchParams(location.search).get('set') || 'LQ';   // ?set=HQ — полный рендер
+  const DIR = `renders/360_Test/${SET}/`;
+  const set = SETS[SET] || SETS.HQ;
+  const DEG_PER_PX = 0.35;   // сколько градусов облёта на пиксель свайпа (в координатах экрана 430×932)
+  // Выбранная квартира (тап по подсветке в режиме «квартиры»): кадр приближается и поднимается вверх по экрану (дом уходит от кнопок).
+  // Это 2D-кроп кадра (без перерендера), 3D-слой повторяет его через viewOffset.
+  // zoom — во сколько раз крупнее, lift — на сколько поднять кадр, доля его высоты. Подбор: ?zoom=1.4&lift=0.1
+  // lift больше (1 - 1/zoom) / 2 открывает низ кадра — там рисуется отражение (см. draw()).
+  const qs = new URLSearchParams(location.search);
+  const APT_VIEW = { zoom: +qs.get('zoom') || 1.3, lift: qs.has('lift') ? +qs.get('lift') : 0.2 };
+  const VIEW_MS = 600;   // длительность перехода
+
+  const screen = document.getElementById('screen');
+  const canvas = document.getElementById('pano');
+  const ctx = canvas.getContext('2d');
+  const hint = document.getElementById('hint');
+
+  // --- Вписываем экран дизайна в окно ---
+  let scale = 1;
+  function fit() {
+    scale = Math.min(innerWidth / W, innerHeight / H);
+    screen.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    const dpr = Math.min(devicePixelRatio * scale, 3);
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    draw();
+  }
+
+  function showHint(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
+
+  // --- Загрузка кадров: пробуем все номера набора, берём те, что есть ---
+  // Рядом с кадром — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
+  // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё.
+  const frames = new Map();   // угол облёта, ° -> Image
+  const masks = new Map();    // угол облёта, ° -> Image маски
+  let available = [];         // углы загруженных кадров
+  let pending = set.count;
+  for (let k = 0; k < set.count; k++) {
+    const i = k * set.stepDeg;
+    const img = new Image();
+    img.onload = () => {
+      frames.set(i, img);
+      available = [...frames.keys()].sort((a, b) => a - b);
+      draw();
+      done();
+    };
+    img.onerror = done;
+    img.src = DIR + set.file(k);
+    const mask = new Image();
+    mask.onload = () => { masks.set(i, mask); if (i === shown) draw(); };
+    mask.src = DIR + 'mask/' + set.file(k);
+  }
+  function done() {
+    if (--pending) return;
+    showHint(available.length ? '' :
+      location.protocol === 'file:'
+        ? 'Кадры не грузятся с file:// — запустите serve.cmd и откройте http://localhost:8080'
+        : `Нет кадров в web/${DIR} — запустите sync.cmd ${SET}`);
+  }
+
+  // --- Отрисовка: ближайший доступный кадр к текущему углу, обрезка 4:3 по центру (cover) ---
+  let angle = +new URLSearchParams(location.search).get('angle') || 0;   // угол облёта от кадра 0, ° (?angle=90)
+  let shown = -1;
+  function nearestFrame() {
+    const want = (angle % 360 + 360) % 360;
+    let best = available[0], bestD = Infinity;
+    for (const i of available) {
+      const d = Math.abs(i - want), dc = Math.min(d, 360 - d);
+      if (dc < bestD) { bestD = dc; best = i; }
+    }
+    return best;
+  }
+  function draw(force = true) {
+    if (!available.length) return;
+    const i = nearestFrame();
+    if (i === shown && !force) return;
+    shown = i;
+    const img = frames.get(i);
+    const k = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight) * view.zoom;
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    // Кадр сдвигается вверх на lift его высоты. Верхний край не открываем; нижний может открыться (дом поднят выше,
+    // чем позволяет кадр) — полосу под кадром закрывает его зеркальное отражение с затемнением (там кнопки и адресная строка).
+    const y = Math.min(0, (canvas.height - h) / 2 - view.lift * h);
+    const x = (canvas.width - w) / 2;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, x, y, w, h);
+    const gap = canvas.height - (y + h);
+    if (gap > 0) {
+      const src = Math.min(img.naturalHeight, gap / k);   // столько строк снизу кадра отражаем
+      ctx.save();
+      ctx.translate(0, y + h);
+      ctx.scale(1, -1);
+      ctx.drawImage(img, 0, img.naturalHeight - src, img.naturalWidth, src, x, -src * k, w, src * k);
+      ctx.restore();
+      const g = ctx.createLinearGradient(0, y + h - gap * 0.3, 0, canvas.height);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, y + h - gap * 0.3, canvas.width, gap * 1.3);
+      ctx.fillStyle = '#000';
+    }
+    // 3D-слой (overlay.js) рисуется в той же камере и с той же обрезкой: полный кадр w×h, его угол в (x, y).
+    window.orbitFrame = { angle: i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y,
+                          mask: masks.get(i) || null };
+    screen.dispatchEvent(new Event('orbitframe'));
+  }
+
+  // --- Приближение в режиме «квартиры»: плавный переход между общим видом и APT_VIEW ---
+  const BASE_VIEW = { zoom: 1, lift: 0 };
+  let view = { ...BASE_VIEW }, tween = null;
+  function setView(target, ms = VIEW_MS) {
+    tween = { from: { ...view }, to: target, t0: performance.now(), ms };
+  }
+  function stepView(now) {
+    if (!tween) return;
+    const t = Math.min(1, (now - tween.t0) / tween.ms), e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    for (const key in view) view[key] = tween.from[key] + (tween.to[key] - tween.from[key]) * e;
+    if (t === 1) tween = null;
+    draw();
+  }
+  // Приближение — только когда выбрана квартира (событие от overlay.js; id = null — выбор снят, общий вид).
+  // Сам режим «квартиры» камеру не двигает: только подсветки и скрытые иконки САД/ЛОББИ.
+  screen.addEventListener('apartmentselect', e => setView(e.detail.id ? APT_VIEW : BASE_VIEW));
+
+  // --- Свайп по горизонтали крутит облёт, с инерцией ---
+  let dragging = false, lastX = 0, vel = 0;
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId);
+    dragging = true; lastX = e.clientX; vel = 0; canvas.classList.add('dragging');
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = (e.clientX - lastX) / scale;
+    lastX = e.clientX;
+    vel = -dx * DEG_PER_PX;
+    angle += vel;
+    draw(false);
+  });
+  const up = () => { dragging = false; canvas.classList.remove('dragging'); };
+  canvas.addEventListener('pointerup', up);
+  canvas.addEventListener('pointercancel', up);
+
+  // Поворот облёта на заданный угол с анимацией (стрелки попапа квартиры).
+  let turn = null;
+  function rotateBy(deg, ms = 500) {
+    vel = 0;
+    turn = { from: angle, to: (turn ? turn.to : angle) + deg, t0: performance.now(), ms };
+  }
+  function stepTurn(now) {
+    if (!turn) return;
+    if (dragging) { turn = null; return; }
+    const t = Math.min(1, (now - turn.t0) / turn.ms), e = 1 - (1 - t) ** 3;
+    angle = turn.from + (turn.to - turn.from) * e;
+    if (t === 1) turn = null;
+    draw(false);
+  }
+
+  (function tick(now) {
+    if (!dragging && Math.abs(vel) > 0.01) { angle += vel; vel *= 0.92; draw(false); }
+    stepTurn(now);
+    stepView(now);
+    requestAnimationFrame(tick);
+  })(performance.now());
+
+  // --- Бургер-меню ---
+  const menu = document.getElementById('menu');
+  document.getElementById('burger').onclick = () => menu.classList.add('open');
+  document.getElementById('close').onclick = () => menu.classList.remove('open');
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+  // «Выбрать квартиру» в меню — то же, что центральная кнопка: закрыть меню и включить режим «квартиры».
+  menu.querySelector('.pick').addEventListener('click', () => {
+    menu.classList.remove('open');
+    const apts = document.getElementById('apts');
+    if (!apts.classList.contains('on')) apts.click();
+  });
+
+  // --- Попап выбранной квартиры ---
+  // Открывается на 'apartmentselect' от overlay.js. Данные — data/apartments/ (tools/apartments_export.py):
+  // фид застройщика (только квартиры в продаже) и листы планов Plans/<id>.jpg.
+  const ARROW_DEG = 30;   // на сколько поворачивают облёт стрелки попапа
+  const popup = document.getElementById('aptPopup');
+  const aptPlan = document.getElementById('aptPlan');
+  let aptData = {}, aptShown = null;
+  fetch('data/apartments/apartments.json').then(r => r.json()).then(d => { aptData = d; showApartment(aptShown); })
+    .catch(e => console.error('apartments:', e));
+  const fmt = (v, digits) => v.toLocaleString('ru-RU', { maximumFractionDigits: digits });
+  function showApartment(id) {
+    aptShown = id;
+    popup.classList.toggle('open', !!id);
+    if (!id) return;
+    const a = aptData[id];
+    const floor = a ? a.floor : +id.split('-')[1];
+    aptPlan.src = `data/apartments/plans/${id}.jpg`;
+    document.getElementById('aptNum').textContent = a ? `${a.number} | ${a.status}` : `${id} | нет в продаже`;
+    document.getElementById('aptKind').innerHTML = a
+      ? `${a.rooms}к квартира<br>${fmt(a.area, 2)} м²` : '';
+    document.getElementById('aptFloor').innerHTML = `${floor} этаж` + (a && a.price ? `<br>${fmt(a.price / 1e6, 1)} млн` : '');
+  }
+  aptPlan.onerror = () => aptPlan.removeAttribute('src');   // плана нет — белая подложка
+  screen.addEventListener('apartmentselect', e => showApartment(e.detail.id));
+  // Закрыть = снять выбор квартиры (overlay.js пришлёт apartmentselect с id = null).
+  document.getElementById('aptClose').onclick = () => screen.dispatchEvent(new Event('apartmentclear'));
+  document.getElementById('aptLeft').onclick = () => rotateBy(-ARROW_DEG);
+  document.getElementById('aptRight').onclick = () => rotateBy(ARROW_DEG);
+
+  // --- Панорама и приближение картинки на весь экран (3D-план, этажи) ---
+  // Старт — на весь экран (cover); палец/мышь — панорама, щипок/колесо — приближение вокруг точки
+  // (от «вся картинка» до maxZoom × cover), двойной тап — приблизить/вернуть. Кнопки внутри root жестов не ловят.
+  // render(v) получает масштаб v.s и сдвиг v.x, v.y картинки iw×ih в px экрана дизайна.
+  const toDesign = e => { const r = screen.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale }; };
+  function panZoom(root, maxZoom, render) {
+    const v = { s: 1, x: 0, y: 0, min: 1, cover: 1, iw: 0, ih: 0 };
+    function apply() {
+      v.s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s));
+      // Картинка больше экрана — края не открываем; меньше — по центру.
+      const w = v.iw * v.s, h = v.ih * v.s;
+      v.x = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, v.x));
+      v.y = h <= H ? (H - h) / 2 : Math.min(0, Math.max(H - h, v.y));
+      render(v);
+    }
+    function zoom(k, cx, cy) {   // приблизить в k раз вокруг точки (cx, cy) экрана дизайна
+      const s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s * k));
+      v.x = cx - (cx - v.x) * s / v.s; v.y = cy - (cy - v.y) * s / v.s; v.s = s;
+      apply();
+    }
+    function reset(iw, ih) {
+      v.iw = iw; v.ih = ih;
+      v.min = Math.min(W / iw, H / ih);     // вся картинка
+      v.cover = Math.max(W / iw, H / ih);   // на весь экран
+      v.s = v.cover; v.x = (W - iw * v.s) / 2; v.y = (H - ih * v.s) / 2;
+      apply();
+    }
+
+    // Жесты: один палец — панорама, два — щипок (приближение вокруг середины между пальцами).
+    const ptrs = new Map();
+    let pinch = null, lastTap = 0;
+    root.addEventListener('pointerdown', e => {
+      if (e.target.closest('button') || !v.iw) return;
+      root.setPointerCapture(e.pointerId);
+      ptrs.set(e.pointerId, toDesign(e));
+      pinch = null;
+      if (ptrs.size === 1) {   // двойной тап
+        const now = performance.now(), p = toDesign(e);
+        if (now - lastTap < 300) { zoom(v.s > v.cover * 1.5 ? v.cover / v.s : 2.5, p.x, p.y); lastTap = 0; }
+        else lastTap = now;
+      }
+    });
+    root.addEventListener('pointermove', e => {
+      if (!ptrs.has(e.pointerId)) return;
+      const prev = ptrs.get(e.pointerId), p = toDesign(e);
+      ptrs.set(e.pointerId, p);
+      if (ptrs.size === 1) { v.x += p.x - prev.x; v.y += p.y - prev.y; apply(); return; }
+      const [a, b] = [...ptrs.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y), c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (pinch) {
+        v.x += c.x - pinch.c.x; v.y += c.y - pinch.c.y;
+        zoom(d / pinch.d, c.x, c.y);
+      }
+      pinch = { d, c };
+    });
+    const up = e => { ptrs.delete(e.pointerId); pinch = null; };
+    root.addEventListener('pointerup', up);
+    root.addEventListener('pointercancel', up);
+    root.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (!v.iw) return;
+      const p = toDesign(e);
+      zoom(Math.exp(-e.deltaY * 0.0015), p.x, p.y);
+    }, { passive: false });
+    return { reset, redraw: apply };
+  }
+
+  // --- 3D-план квартиры на весь экран (кнопка ПЛАН) ---
+  // Рендер renders/Plans_Test/plan_<id>.webp (4K, сжат tools/compress_renders.py, Docs/PLAN3D.md). Макета нет: только крестик — назад к попапу.
+  const PLAN3D_DIR = 'renders/Plans_Test/';
+  const PLAN3D_MAX_ZOOM = 4;   // во сколько раз крупнее начального (cover)
+  const plan3d = document.getElementById('plan3d');
+  const p3Img = document.getElementById('plan3dImg');
+  const p3Loading = document.getElementById('plan3dLoading');
+  const p3 = panZoom(plan3d, PLAN3D_MAX_ZOOM, v => { p3Img.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`; });
+  p3Img.onload = () => {
+    p3Loading.style.display = 'none'; p3Img.style.visibility = 'visible';
+    p3.reset(p3Img.naturalWidth, p3Img.naturalHeight);
+  };
+  p3Img.onerror = () => { p3Loading.textContent = 'Нет 3D-плана этой квартиры'; };
+  function openPlan3d(id) {
+    p3Img.style.visibility = 'hidden';
+    p3Loading.textContent = 'Загрузка…'; p3Loading.style.display = '';
+    p3Img.src = `${PLAN3D_DIR}plan_${id}.webp`;
+    plan3d.classList.add('open');
+  }
+  document.getElementById('aptPlanBtn').onclick = () => { if (aptShown) openPlan3d(aptShown); };
+  // ?apt=<id>&plan3d=1 — сразу открыть 3D-план (для проверки).
+  if (qs.has('plan3d')) screen.addEventListener('apartmentselect', e => { if (e.detail.id) openPlan3d(e.detail.id); }, { once: true });
+  document.getElementById('plan3dClose').onclick = () => plan3d.classList.remove('open');
+
+  // --- Этажи: лобби (F1), паркинг −1, −2 (Docs/FLOORS.md) ---
+  // Кадры renders/Floors_Test/floor_<id>.webp (4K; в camera.json имена .png из UE — подменяем на .webp) сняты одной камерой и совпадают слой в слой: переключатель меняет
+  // картинку, панорама и масштаб остаются. Кнопки на кадре — якоря UE из data/floors/camera.json (мировая точка →
+  // пиксель кадра; pivot — какая точка кнопки стоит в якоре):
+  //   F1  — лупа BP_LobbyViewItem index 5 — переход на −1 («Parking -1  M8»). Остальные лупы приложения открывают
+  //         группу камер, а не камеру, — вместо них «360» в точках камер, для которых есть панорама
+  //         (data/pano/camera.json, мировая точка камеры → пиксель по projection кадра); нажатие открывает pano.js;
+  //   P-1 — Widget (PARKING -2) → «Parking -2  M9». Остальные якоря (подписи зон лобби, кладовые) в макете не нарисованы.
+  // Открывают: иконка ЛОББИ на общем виде, пункт меню «ЛОББИ И ПАРКОВКА»; ?floor=F1|P-1|P-2 — сразу (для проверки).
+  const FLOORS_DIR = 'renders/Floors_Test/';
+  const FLOOR_MAX_ZOOM = 3;
+  const floors = document.getElementById('floors');
+  const floorShots = document.getElementById('floorShots');
+  const floorPins = document.getElementById('floorPins');
+  const floorsLoading = document.getElementById('floorsLoading');
+  const floorTabs = [...document.querySelectorAll('#floorTabs button')];
+  function floorPinsFor(shot) {
+    const pins = [];
+    for (const a of shot.anchors) {
+      if (!a.inFrame || !a.visible) continue;
+      if (a.class === 'BP_LobbyViewItem' && a.index === 5)
+        pins.push({ a, park: 'Parking -1  M8', go: 'P-1' });
+      else if (a.class === 'BP_Parking_01' && a.widget === 'Widget')
+        pins.push({ a, park: 'Parking -2  M9', go: 'P-2' });
+    }
+    if (shot.id === 'F1')
+      for (const p of panoPoints) {
+        const px = projectPixel(shot, p.location);
+        if (px && px[0] >= 0 && px[0] < shot.image.width && px[1] >= 0 && px[1] < shot.image.height)
+          pins.push({ a: { pixel: px, pivot: [0.5, 0.5] }, text: '360', pano: p.id });
+      }
+    return pins;
+  }
+  // Мировая точка UE → пиксель кадра этажа: [u·w, v·w, w] = projection · [X, Y, Z, 1].
+  function projectPixel(shot, [x, y, z]) {
+    const [u, v, w] = shot.projection.map(r => r[0] * x + r[1] * y + r[2] * z + r[3]);
+    return w > 0 ? [u / w, v / w] : null;
+  }
+  // Панорамы точек обзора (pano.js). Нет файла — кнопок «360» просто нет.
+  let panoPoints = [];
+  const panoLoaded = fetch('data/pano/camera.json').then(r => r.json()).then(d => { panoPoints = d.points; }).catch(() => {});
+  const floorView = panZoom(floors, FLOOR_MAX_ZOOM, v => {
+    for (const img of floorShots.children) img.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`;
+    // Кнопки не масштабируются вместе с картинкой — только встают в свою точку кадра.
+    for (const el of floorPins.children) {
+      const [u, w] = el._pixel, [px, py] = el._pivot;
+      el.style.transform = `translate(${v.x + u * v.s}px, ${v.y + w * v.s}px) translate(${-px * 100}%, ${-py * 100}%)`;
+    }
+  });
+  let floorData = null, floorCur = null, floorFitted = false;
+  function loadFloors() {   // camera.json и все три кадра — сразу, чтобы переключение было мгновенным
+    return floorData ||= fetch('data/floors/camera.json').then(r => r.json()).then(d => {
+      for (const shot of d.shots) {
+        const img = shot.img = new Image();
+        img.className = 'shot'; img.alt = ''; img.draggable = false;
+        shot.loaded = new Promise(ok => { img.onload = ok; img.onerror = ok; });
+        img.src = FLOORS_DIR + shot.file.replace(/\.png$/i, '.webp');
+        floorShots.appendChild(img);
+      }
+      return d;
+    });
+  }
+  function makePin(p) {
+    const el = document.createElement('button');
+    if (p.park) {
+      el.className = 'pin-park';
+      el.textContent = p.park;
+      const chevron = document.createElement('img');
+      chevron.src = 'assets/chevron.svg'; chevron.alt = '';
+      el.appendChild(chevron);
+      el.onclick = () => showFloor(p.go);
+    } else {
+      el.className = 'pin-360';
+      el.textContent = p.text;
+      if (p.pano) el.onclick = () => window.pano?.open(p.pano);
+    }
+    el._pixel = p.a.pixel; el._pivot = p.a.pivot;
+    return el;
+  }
+  async function showFloor(id) {
+    floorCur = id;
+    floorTabs.forEach(b => b.classList.toggle('on', b.dataset.floor === id));
+    floorPins.replaceChildren();
+    floorsLoading.textContent = 'Загрузка…'; floorsLoading.style.display = '';
+    let shot;
+    try {
+      shot = (await loadFloors()).shots.find(s => s.id === id);
+      await Promise.all([shot.loaded, panoLoaded]);
+    } catch (e) {
+      console.error('floors:', e);
+      floorsLoading.textContent = 'Нет data/floors/camera.json — запустите sync.cmd';
+      return;
+    }
+    if (floorCur !== id) return;   // пока грузилось, выбрали другой этаж
+    if (!shot.img.naturalWidth) { floorsLoading.textContent = `Нет кадра web/${FLOORS_DIR}${shot.file} — запустите sync.cmd`; return; }
+    floorsLoading.style.display = 'none';
+    for (const img of floorShots.children) img.classList.toggle('on', img === shot.img);
+    floorPins.replaceChildren(...floorPinsFor(shot).map(makePin));
+    // Камера у кадров одна: на весь экран — только при первом показе, дальше панорама и масштаб сохраняются.
+    if (!floorFitted) { floorFitted = true; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight); }
+    else floorView.redraw();
+  }
+  function openFloors(id = 'F1') {
+    menu.classList.remove('open');
+    floors.classList.add('open');
+    showFloor(id);
+  }
+  floorTabs.forEach(b => b.onclick = () => { if (b.dataset.floor !== floorCur) showFloor(b.dataset.floor); });
+  document.querySelector('.place.lobby').onclick = () => openFloors();
+  document.getElementById('menuFloors').addEventListener('click', () => openFloors());
+  document.getElementById('floorsBurger').onclick = () => menu.classList.add('open');
+  document.getElementById('floorsClose').onclick = () => floors.classList.remove('open');
+  document.getElementById('menuOverview').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); });
+  if (qs.has('floor')) openFloors(qs.get('floor'));
+
+  addEventListener('resize', fit);
+  fit();
+})();
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="overlay.js"></script>
+<script type="module" src="pano.js"></script>
+</body>
+</html>
