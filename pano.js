@@ -113,6 +113,7 @@ function showVariants(point) {
     .sort((a, b) => (a.variantLabel || a.id).localeCompare(b.variantLabel || b.id));
   variantsBar.replaceChildren(...(group.length < 2 ? [] : group.map(p => {
     const b = document.createElement('button');
+    b.className = 'lg';
     b.textContent = p.variantLabel || p.id;
     if (p.variantNote) b.title = p.variantNote;
     b.classList.toggle('on', p.id === point.id);

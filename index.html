@@ -51,12 +51,15 @@
     pointer-events: none;
   }
   .header > * { pointer-events: auto; }
+  /* Белая стеклянная кнопка (Figma UI-Kit «Burger button» 943:13992): заливка #F7F7F7, мягкий тёмный ореол
+     (слой Blur: чёрный 10 % с размытием, прозрачность 67 %), светлый ободок эффекта Glass. */
   .glass {
     width: 50px; height: 50px; border-radius: 50%; border: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(250, 250, 250, 0.6);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 0 0 0.5px rgba(166, 166, 166, 0.6), 0 8px 15px rgba(0, 0, 0, 0.04);
+    background: rgba(247, 247, 247, 0.96);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 2px 22px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.9),
+                inset 1.5px 1.5px 2px -1px #fff, inset -2px -2px 3px -1px rgba(0, 0, 0, 0.12);
     cursor: pointer;
   }
   .glass img, .glass svg { width: 24px; height: 24px; }
@@ -64,36 +67,53 @@
   .spacer { width: 50px; height: 50px; }
   .lang { font-size: 14px; color: #4a4a4a; text-transform: uppercase; }
 
+  /* Зелёное стекло — все зелёные кнопки (Figma UI-Kit: «Tabbar Button» 941:1919 — круглые, эффект Glass: frost 3,
+     refraction 1, depth 100; «Map button» 943:13933 — плашки САД/ЛОББИ, frost 0). В CSS преломления нет — его
+     заменяют размытие фона под кнопкой, светлый ободок с бликами по краю и чуть более светлый край стекла.
+     .on — состояние Focused: светлая заливка #B9D2C2 70 %, иконка тёмная #265746. Иконка .ic — маска по SVG (--i),
+     цвет — currentColor. */
+  .lg {
+    position: relative; border: 0; padding: 0; cursor: pointer; font-family: inherit;
+    border-radius: 200px; background-color: rgba(38, 87, 70, 0.7); color: #b9d2c2;
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    box-shadow: inset 0 0 0 0.75px rgba(185, 210, 194, 0.28),
+                inset 1.2px 1.2px 1px -0.5px rgba(255, 255, 255, 0.26),
+                inset -1.2px -1.2px 1px -0.5px rgba(255, 255, 255, 0.16);
+    transition: background-color .2s, color .2s;
+  }
+  .lg::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(farthest-side, transparent 80%, rgba(185, 210, 194, 0.07) 100%);
+  }
+  .lg.flat { backdrop-filter: none; -webkit-backdrop-filter: none; }   /* frost 0 — фон не размыт */
+  .lg.on { background-color: rgba(185, 210, 194, 0.7); color: #265746; }
+  .lg:active { background-color: rgba(38, 87, 70, 0.4); }   /* Pressed (Map button) */
+  .lg.on:active { background-color: rgba(185, 210, 194, 0.5); }
+  .ic {
+    display: block; width: 28px; height: 28px; background: currentColor;
+    -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat;
+  }
+
   /* Иконки зон САД / ЛОББИ (925:7945, 925:7941) — стоят в мировой точке UE, позицию каждый кадр ставит overlay.js
      (центр плашки = точка, как Pivot 0.5×0.5 у WidgetComponent в UE). САД открывает кадр двора, ЛОББИ — этажи. */
+  /* Плашка — «Map button» UI-Kit (943:13933): стекло frost 0, заливка 80 %; кружок иконки — своё стекло (frost 3), 50 %.
+     САД открывает двор, ЛОББИ — этажи. */
   .place {
-    position: absolute; left: 0; top: 0; height: 44px; padding: 0 18px 0 48px;
-    display: none; align-items: center; border-radius: 200px; background: rgba(38, 87, 70, 0.8);
+    position: absolute; left: 0; top: 0; height: 44px; padding: 0 12px 0 48px;
+    display: none; align-items: center; background-color: rgba(38, 87, 70, 0.8);
     color: #57967a; font-size: 16px; font-weight: 500; letter-spacing: 0.8px; line-height: 1; white-space: nowrap;
-    pointer-events: none;
   }
-  .place .ico { position: absolute; left: 4px; top: 4px; width: 36px; height: 36px; border-radius: 200px;
-                background: rgba(64, 145, 117, 0.5); overflow: hidden; }
-  .place .ico img { position: absolute; display: block; }
-  .place.garden .ico img { left: 8.51px; top: 8.51px; width: 18.33px; height: 18.33px; }
-  .place.garden { pointer-events: auto; cursor: pointer; }                        /* открывает двор */
-  .place.lobby { padding-right: 17px; pointer-events: auto; cursor: pointer; }   /* открывает этажи */
-  .place.lobby .ico img { left: 5px; top: 5px; width: 26px; height: 26px; }
+  .place .ico { position: absolute; left: 4px; top: 4px; width: 36px; height: 36px; background-color: rgba(64, 145, 117, 0.5); }
+  .place .ico img { position: absolute; display: block; left: 5px; top: 5px; width: 26px; height: 26px; }
 
   /* 5 круглых кнопок внизу (пока без действий). */
   .dock {
     position: absolute; top: calc(770px + var(--db)); left: 50%; transform: translateX(-50%);
     display: flex; gap: 23px; align-items: center;
   }
-  .dock .b { position: relative; width: 50px; height: 50px; border-radius: 200px; background: var(--green-70); overflow: hidden; }
-  .dock .b img { position: absolute; display: block; }
-  .dock .light img   { left: 9px;  top: 9px;  width: 32px; height: 32px; object-fit: contain; }
-  .dock .fav img     { left: 10px; top: 10px; width: 29px; height: 29px; }
-  .dock .filters     { background: none; cursor: pointer; transition: box-shadow .2s; }
-  .dock .filters img { left: 0; top: 0; width: 50px; height: 50px; }
-  .dock .filters.on  { box-shadow: 0 0 0 2px #b6d5b9; }
-  .dock .map         { cursor: pointer; transition: box-shadow .2s; }
-  .dock .map.on      { box-shadow: 0 0 0 2px #b6d5b9; }
+  /* Кнопки — «Tabbar Button» UI-Kit, иконки — «Tabbar icons» 941:1845 (28×28). */
+  .dock .b { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+  .dock .light:not(.on) { color: #a7c5b3; }   /* у иконки дня/ночи в макете свой оттенок */
   /* Карта района (Figma «1 - Объект - Район»): кадр вместо облёта, шапка и кнопки те же. Открывается 4-й кнопкой дока.
      Слой над облётом и 3D, под шапкой и доком; иконки САД/ЛОББИ на карте прячутся. */
   .mapview {
@@ -105,10 +125,9 @@
   .mapview .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                       color: #b9d2c2; font-size: 14px; pointer-events: none; }
   #screen.map-on .place, #screen.map-on .hint { visibility: hidden; }
-  .dock .map img     { left: 12px; top: 12px; width: 25px; height: 25px; }
-  .dock .share img   { left: 11px; top: 11px; width: 29px; height: 29px; transform: scaleX(-1); }
 
-  /* Попап выбранной квартиры (фрейм 925:8781): карточка 925:8809 + ряд «стрелки / закрыть» 925:8796, 925:8807. */
+  /* Попап выбранной квартиры (фрейм 925:8781): карточка 925:8809 и крестик 925:8807. Стрелок поворота облёта нет
+     (решение пользователя 2026-10-21: при выбранной квартире не нужны). */
   .apt-popup { opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s; }
   .apt-popup.open { opacity: 1; visibility: visible; }
   .apt-card {
@@ -130,12 +149,9 @@
     display: flex; align-items: center; justify-content: center;
     color: #b9d2c2; font-size: 16px;
   }
-  .apt-nav { position: absolute; top: calc(705px + var(--db)); width: 45px; height: 45px; border: 0; padding: 0; background: none; cursor: pointer; }
-  .apt-nav img { display: block; width: 45px; height: 45px; }
-  .apt-nav.left  { left: calc(44px + var(--dx)); }
-  .apt-nav.right { left: calc(341px + var(--dx)); transform: scaleX(-1); }
-  .apt-nav.close { left: calc(193px + var(--dx)); border-radius: 180px; background: var(--green-70); }
-  .apt-nav.close img { width: 12.6px; height: 12.6px; margin: auto; }
+  .apt-nav { position: absolute; top: calc(705px + var(--db)); width: 45px; height: 45px; }
+  .apt-nav.close { left: calc(193px + var(--dx)); }
+  .apt-nav.close img { display: block; width: 12.6px; height: 12.6px; margin: auto; }
 
   /* 3D-план квартиры на весь экран (кнопка ПЛАН попапа). Макета нет: только крестик, как у меню. */
   .plan3d {
@@ -165,27 +181,22 @@
   .floor-pins > * { position: absolute; left: 0; top: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
   /* «360» (925:9474) — панорама точки обзора, стоит в точке её камеры. */
   .pin-360 {
-    width: 36px; height: 36px; border-radius: 131px; background: rgba(38, 87, 70, 0.5);
+    width: 36px; height: 36px; background-color: rgba(38, 87, 70, 0.5);
     color: #b6d5b9; font-size: 13.09px; line-height: 1;
   }
   /* Переход на паркинг (925:9478): «Parking -1  M8 ›». */
   .pin-park {
-    height: 45px; padding: 0 25px; border-radius: 12px; background: rgba(38, 87, 70, 0.7);
+    height: 45px; padding: 0 25px; border-radius: 12px;
     display: flex; align-items: center; gap: 10px; color: #b9d2c2; font-size: 16px; line-height: 1; white-space: pre;
   }
   .pin-park img { width: 11px; height: 6px; transform: rotate(-90deg) scaleY(-1); }
   /* Переключатель этажей (925:9481). */
   .floor-tabs { position: absolute; left: 24px; top: calc(165px + var(--dt)); width: 81px; display: flex; flex-direction: column; gap: 8px; z-index: 1; }
-  .floor-tabs button {
-    height: 45px; border: 0; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px; line-height: 1;
-    background: rgba(38, 87, 70, 0.7); color: #b9d2c2;
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  }
-  .floor-tabs button.on { background: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
+  .floor-tabs button { height: 45px; border-radius: 12px; font-size: 16px; line-height: 1; }
+  .floor-tabs button.on { background-color: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
   /* Крестик (925:9488) — назад к общему виду. */
   .floors-close {
-    position: absolute; left: calc(193px + var(--dx)); top: calc(775px + var(--db)); width: 45px; height: 45px; border: 0; padding: 0; z-index: 1;
-    border-radius: 180px; background: rgba(38, 87, 70, 0.7); cursor: pointer;
+    position: absolute; left: calc(193px + var(--dx)); top: calc(775px + var(--db)); width: 45px; height: 45px; z-index: 1;
   }
   .floors-close img { display: block; width: 12.6px; height: 12.6px; margin: auto; }
   /* Панорама 360 точки обзора (pano.js) — поверх этажей; макета нет, только крестик как у этажей. */
@@ -197,11 +208,8 @@
   .pano canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   /* Варианты одной панорамы (сравнение съёмки) — как переключатель этажей, в ряд. */
   .pano-variants { position: absolute; left: 24px; top: 60px; display: flex; gap: 8px; z-index: 1; }
-  .pano-variants button {
-    height: 45px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px;
-    background: rgba(38, 87, 70, 0.7); color: #b9d2c2; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  }
-  .pano-variants button.on { background: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
+  .pano-variants button { height: 45px; padding: 0 18px; border-radius: 12px; font-size: 16px; }
+  .pano-variants button.on { background-color: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
   .pano .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                    color: #b9d2c2; font-size: 14px; pointer-events: none; }
 
@@ -246,7 +254,7 @@
     width: 292px; display: flex; flex-direction: column; gap: 16px;
   }
   .menu-list a {
-    height: 45px; border-radius: 200px; background: var(--green-70);
+    height: 45px;
     display: flex; align-items: center; justify-content: center;
     color: var(--menu-text); font-size: 16px; text-decoration: none;
   }
@@ -279,15 +287,15 @@
     <div class="spacer"></div>
   </div>
 
-  <div class="place garden" data-place="garden"><div class="ico"><img src="assets/icon-garden.svg" alt=""></div>САД</div>
-  <div class="place lobby" data-place="lobby"><div class="ico"><img src="assets/icon-lobby.png" alt=""></div>ЛОББИ</div>
+  <button class="place lg flat garden" data-place="garden"><span class="ico lg"><img src="assets/icon-garden-26.svg" alt=""></span>САД</button>
+  <button class="place lg flat lobby" data-place="lobby"><span class="ico lg"><img src="assets/icon-lobby.png" alt=""></span>ЛОББИ</button>
 
   <div class="dock">
-    <div class="b light"><img src="assets/icon-light.png" alt=""></div>
-    <div class="b fav"><img src="assets/icon-favorite.svg" alt=""></div>
-    <div class="b filters" id="apts" role="button" aria-label="Квартиры"><img src="assets/btn-filters.svg" alt=""></div>
-    <div class="b map" id="dockMap" role="button" aria-label="Карта"><img src="assets/icon-map.svg" alt=""></div>
-    <div class="b share"><img src="assets/icon-share.svg" alt=""></div>
+    <button class="b lg light" aria-label="День / ночь"><i class="ic" style="--i: url(assets/tab-daynight.svg)"></i></button>
+    <button class="b lg fav" aria-label="Избранное"><i class="ic" style="--i: url(assets/tab-heart.svg)"></i></button>
+    <button class="b lg filters" id="apts" aria-label="Квартиры"><i class="ic" style="--i: url(assets/tab-filters.svg)"></i></button>
+    <button class="b lg map" id="dockMap" aria-label="Карта"><i class="ic" style="--i: url(assets/tab-location.svg)"></i></button>
+    <button class="b lg share" aria-label="Поделиться"><i class="ic" style="--i: url(assets/tab-share.svg)"></i></button>
   </div>
 
   <div class="apt-popup" id="aptPopup">
@@ -303,9 +311,7 @@
         <span style="width: 97px">Галерея</span>
       </div>
     </div>
-    <button class="apt-nav left" id="aptLeft" aria-label="Камера влево"><img src="assets/btn-arrow.svg" alt=""></button>
-    <button class="apt-nav close" id="aptClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
-    <button class="apt-nav right" id="aptRight" aria-label="Камера вправо"><img src="assets/btn-arrow.svg" alt=""></button>
+    <button class="apt-nav lg close" id="aptClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
   </div>
 
   <div class="plan3d" id="plan3d">
@@ -329,18 +335,18 @@
       <div class="spacer"></div>
     </div>
     <div class="floor-tabs" id="floorTabs">
-      <button data-floor="F1">Lobby</button>
-      <button data-floor="P-1">– 1</button>
-      <button data-floor="P-2">– 2</button>
+      <button class="lg" data-floor="F1">Lobby</button>
+      <button class="lg" data-floor="P-1">– 1</button>
+      <button class="lg" data-floor="P-2">– 2</button>
     </div>
-    <button class="floors-close" id="floorsClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+    <button class="floors-close lg" id="floorsClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
   </div>
 
   <div class="pano" id="panoView">
     <canvas id="panoCanvas"></canvas>
     <div class="loading" id="panoLoading">Загрузка…</div>
     <div class="pano-variants" id="panoVariants"></div>
-    <button class="floors-close" id="panoClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+    <button class="floors-close lg" id="panoClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
   </div>
 
   <div class="menu" id="menu">
@@ -352,12 +358,12 @@
       <div class="glass lang">рус</div>
     </div>
     <nav class="menu-list">
-      <a href="#">О ПРОЕКТЕ</a>
-      <a href="#" id="menuMap">РАЙОН</a>
-      <a href="#" id="menuOverview">ОБЩИЙ ВИД</a>
-      <a href="#" id="menuFloors">ЛОББИ И ПАРКОВКА</a>
-      <a href="#" id="menuGarden">САД</a>
-      <a href="#">ИЗБРАННОЕ</a>
+      <a href="#" class="lg">О ПРОЕКТЕ</a>
+      <a href="#" class="lg" id="menuMap">РАЙОН</a>
+      <a href="#" class="lg" id="menuOverview">ОБЩИЙ ВИД</a>
+      <a href="#" class="lg" id="menuFloors">ЛОББИ И ПАРКОВКА</a>
+      <a href="#" class="lg" id="menuGarden">САД</a>
+      <a href="#" class="lg">ИЗБРАННОЕ</a>
     </nav>
     <div class="menu-cta">
       <a href="#" class="call">Заказать звонок</a>
@@ -561,14 +567,17 @@
     }
     return best;
   }
-  function draw(force = true) {
+  // Между кадрами набора — плавное перетекание: два соседних кадра с весами по дробной части угла (кадры через 2°,
+  // разница между ними мала). Нет загруженного соседа — ближайший кадр как есть.
+  function draw() {
     if (!available.length) return;
     const i = nearestFrame();
-    const same = i === shown && !force;
     shown = i;
     const bucket = Math.round(angle / set.stepDeg);   // повернули на шаг набора — пересчитать очередь загрузки
     if (bucket !== pumpedAt) { pumpedAt = bucket; pump(); }
-    if (same) return;
+    const a = ((angle % 360) + 360) % 360, a0 = Math.floor(a / set.stepDeg) * set.stepDeg % 360;
+    const a1 = (a0 + set.stepDeg) % 360, t = (a - a0) / set.stepDeg;
+    const blend = t > 0.01 && t < 0.99 && frames.has(a0) && frames.has(a1);
     const img = frames.get(i);
     const k = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight) * view.zoom;
     const w = img.naturalWidth * k, h = img.naturalHeight * k;
@@ -576,16 +585,24 @@
     // чем позволяет кадр) — полосу под кадром закрывает его зеркальное отражение с затемнением (там кнопки и адресная строка).
     const y = Math.min(0, (canvas.height - h) / 2 - view.lift * h);
     const x = (canvas.width - w) / 2;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, x, y, w, h);
     const gap = canvas.height - (y + h);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const paint = (img, alpha) => {
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, x, y, w, h);
+      if (gap > 0) {
+        const src = Math.min(img.naturalHeight, gap / k);   // столько строк снизу кадра отражаем
+        ctx.save();
+        ctx.translate(0, y + h);
+        ctx.scale(1, -1);
+        ctx.drawImage(img, 0, img.naturalHeight - src, img.naturalWidth, src, x, -src * k, w, src * k);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    };
+    if (blend) { paint(frames.get(a0), 1); paint(frames.get(a1), t); }
+    else paint(img, 1);
     if (gap > 0) {
-      const src = Math.min(img.naturalHeight, gap / k);   // столько строк снизу кадра отражаем
-      ctx.save();
-      ctx.translate(0, y + h);
-      ctx.scale(1, -1);
-      ctx.drawImage(img, 0, img.naturalHeight - src, img.naturalWidth, src, x, -src * k, w, src * k);
-      ctx.restore();
       const g = ctx.createLinearGradient(0, y + h - gap * 0.3, 0, canvas.height);
       g.addColorStop(0, 'rgba(0,0,0,0)');
       g.addColorStop(1, 'rgba(0,0,0,0.6)');
@@ -594,7 +611,8 @@
       ctx.fillStyle = '#000';
     }
     // 3D-слой (overlay.js) рисуется в той же камере и с той же обрезкой: полный кадр w×h, его угол в (x, y).
-    window.orbitFrame = { angle: i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y, designW: W,
+    // При перетекании камера 3D-слоя — на промежуточном угле, подсветки едут вместе с картинкой.
+    window.orbitFrame = { angle: blend ? a : i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y, designW: W,
                           mask: masks.get(i) || null };
     screen.dispatchEvent(new Event('orbitframe'));
   }
@@ -616,42 +634,38 @@
   // Сам режим «квартиры» камеру не двигает: только подсветки и скрытые иконки САД/ЛОББИ.
   screen.addEventListener('apartmentselect', e => setView(e.detail.id ? APT_VIEW : BASE_VIEW));
 
-  // --- Свайп по горизонтали крутит облёт, с инерцией ---
-  let dragging = false, lastX = 0, vel = 0;
+  // --- Свайп по горизонтали крутит облёт, без инерции ---
+  // Палец задаёт целевой угол, картинка догоняет его за ~FOLLOW_MS (сглаживает рывки событий касания).
+  // Отпустили — облёт останавливается: доводится только до ближайшего кадра набора (меньше шага), чтобы в покое
+  // был чистый кадр без перетекания и подсветки точно на нём.
+  const FOLLOW_MS = 60;
+  let dragging = false, lastX = 0, target = angle;
   canvas.addEventListener('pointerdown', e => {
     canvas.setPointerCapture(e.pointerId);
-    dragging = true; lastX = e.clientX; vel = 0; canvas.classList.add('dragging');
+    dragging = true; lastX = e.clientX; target = angle; canvas.classList.add('dragging');
   });
   canvas.addEventListener('pointermove', e => {
     if (!dragging) return;
-    const dx = (e.clientX - lastX) / scale;
+    target -= (e.clientX - lastX) / scale * DEG_PER_PX;
     lastX = e.clientX;
-    vel = -dx * DEG_PER_PX;
-    angle += vel;
-    draw(false);
   });
-  const up = () => { dragging = false; canvas.classList.remove('dragging'); };
+  const up = () => {
+    if (!dragging) return;
+    dragging = false; canvas.classList.remove('dragging');
+    target = Math.round(target / set.stepDeg) * set.stepDeg;
+  };
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', up);
 
-  // Поворот облёта на заданный угол с анимацией (стрелки попапа квартиры).
-  let turn = null;
-  function rotateBy(deg, ms = 500) {
-    vel = 0;
-    turn = { from: angle, to: (turn ? turn.to : angle) + deg, t0: performance.now(), ms };
-  }
-  function stepTurn(now) {
-    if (!turn) return;
-    if (dragging) { turn = null; return; }
-    const t = Math.min(1, (now - turn.t0) / turn.ms), e = 1 - (1 - t) ** 3;
-    angle = turn.from + (turn.to - turn.from) * e;
-    if (t === 1) turn = null;
-    draw(false);
-  }
-
+  let lastTick = performance.now();
   (function tick(now) {
-    if (!dragging && Math.abs(vel) > 0.01) { angle += vel; vel *= 0.92; draw(false); }
-    stepTurn(now);
+    const dt = Math.min(now - lastTick, 100);
+    lastTick = now;
+    if (angle !== target) {
+      const d = target - angle;
+      angle = Math.abs(d) < 0.01 ? target : angle + d * (1 - Math.exp(-dt / FOLLOW_MS));
+      draw();
+    }
     stepView(now);
     requestAnimationFrame(tick);
   })(performance.now());
@@ -671,7 +685,6 @@
   // --- Попап выбранной квартиры ---
   // Открывается на 'apartmentselect' от overlay.js. Данные — data/apartments/ (tools/apartments_export.py):
   // фид застройщика (только квартиры в продаже) и листы планов Plans/<id>.jpg.
-  const ARROW_DEG = 30;   // на сколько поворачивают облёт стрелки попапа
   const popup = document.getElementById('aptPopup');
   const aptPlan = document.getElementById('aptPlan');
   let aptData = {}, aptShown = null;
@@ -694,8 +707,6 @@
   screen.addEventListener('apartmentselect', e => showApartment(e.detail.id));
   // Закрыть = снять выбор квартиры (overlay.js пришлёт apartmentselect с id = null).
   document.getElementById('aptClose').onclick = () => screen.dispatchEvent(new Event('apartmentclear'));
-  document.getElementById('aptLeft').onclick = () => rotateBy(-ARROW_DEG);
-  document.getElementById('aptRight').onclick = () => rotateBy(ARROW_DEG);
 
   // --- Панорама и приближение картинки на весь экран (3D-план, этажи, двор) ---
   // Старт — на весь экран (cover); палец/мышь — панорама, щипок/колесо — приближение вокруг точки
@@ -863,14 +874,14 @@
   function makePin(p) {
     const el = document.createElement('button');
     if (p.park) {
-      el.className = 'pin-park';
+      el.className = 'pin-park lg';
       el.textContent = p.park;
       const chevron = document.createElement('img');
       chevron.src = 'assets/chevron.svg'; chevron.alt = '';
       el.appendChild(chevron);
       el.onclick = () => showFloor(p.go);
     } else {
-      el.className = 'pin-360';
+      el.className = 'pin-360 lg';
       el.textContent = p.text;
       if (p.pano) el.onclick = () => window.pano?.open(p.pano);
     }
