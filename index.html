@@ -207,6 +207,7 @@
 
   /* Адресная строка Safari внизу (925:8821) — часть макета, видна на всех экранах (поверх меню), без действий. */
   #screen.phone .safari { display: none; }
+  #screen.sim .safari { display: flex; top: auto; bottom: 0; }   /* вид «как на iPhone» на ПК — строка у низа экрана */
   .safari {
     position: absolute; left: 0; top: 840px; width: 430px; height: 92px; padding: 8px 16px; z-index: 3;   /* выше панорамы */
     display: flex; gap: 8px; align-items: flex-start;
@@ -424,12 +425,38 @@
     style: 'position:absolute;left:8px;right:8px;top:45%;z-index:99;padding:6px 8px;font:12px/1.4 monospace;' +
       'color:#fff;background:rgba(0,0,0,.7);border-radius:6px;pointer-events:none;word-break:break-word',
   })) : null;
+  // Просмотр на ПК «как на телефоне»: кнопка в углу окна (не на телефоне) перебирает виды, ?sim=N — сразу N-й.
+  // Телефон — экран в css px, отступы статус-бара/полоски «домой», Safari iOS 26 (адресная строка поверх страницы).
+  const SIMS = [
+    { name: 'ПК' },
+    { name: 'iPhone 14', w: 390, h: 844, safeTop: 47, safeBottom: 34 },
+    { name: 'iPhone 16 Pro Max', w: 440, h: 956, safeTop: 62, safeBottom: 34 },
+  ];
+  let sim = Math.min(+qs.get('sim') || 0, SIMS.length - 1);
+  if (!PHONE) {
+    const b = document.body.appendChild(Object.assign(document.createElement('button'), {
+      style: 'position:fixed;right:12px;top:12px;z-index:100;padding:8px 14px;border:0;border-radius:10px;cursor:pointer;' +
+        'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
+      onclick: () => { sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name; fit(); },
+    }));
+    b.textContent = SIMS[sim].name;
+  }
   function fit() {
+    const s = SIMS[sim];
     const phone = PHONE && innerHeight > innerWidth;
-    screen.classList.toggle('phone', phone);
+    screen.classList.toggle('phone', phone || !!s.w);
     document.documentElement.classList.toggle('phone', phone);
+    screen.classList.toggle('sim', !!s.w);
+    screen.style.borderRadius = s.w ? '48px' : '';
     let dt = 0, db = 0, top = '';
-    if (phone) {
+    if (s.w) {
+      // Как на телефоне в Safari: картинка на весь экран, кнопки — над адресной строкой; весь экран вписан в окно.
+      const k = s.w / W;   // css px телефона на px дизайна
+      H = s.h / k;
+      dt = Math.max(s.safeTop / k + 6, 12) - 57;
+      db = H - (TAB_BAR + s.safeBottom) / k - H_CONTENT;
+      scale = Math.min(innerWidth / W, innerHeight / H) * 0.96;
+    } else if (phone) {
       // Экран дизайна — на весь экран (под статус-баром и панелями Safari, как в Figma), кнопки — в видимой части.
       const vv = window.visualViewport;
       const visBottom = vv ? vv.offsetTop + vv.height : innerHeight;       // низ видимой части окна, css px
