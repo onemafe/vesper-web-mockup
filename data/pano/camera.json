@@ -59,6 +59,25 @@
    "equirectYaw": -25.200022000000025
   },
   {
+   "id": "BP_GardenCamera1_sph_hq",
+   "variantOf": "BP_GardenCamera1",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_GardenCamera1",
+   "tags": [],
+   "location": [
+    -10549.451520078706,
+    -1258.2015567768672,
+    13762.278033
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -25.200022000000025
+   },
+   "equirect": "sph/BP_GardenCamera1_sph_hq.png",
+   "equirectYaw": -25.200022000000025
+  },
+  {
    "id": "BP_LobbyCamera6",
    "cameraActor": "BP_LobbyCamera6",
    "tags": [
