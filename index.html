@@ -567,17 +567,14 @@
     }
     return best;
   }
-  // Между кадрами набора — плавное перетекание: два соседних кадра с весами по дробной части угла (кадры через 2°,
-  // разница между ними мала). Нет загруженного соседа — ближайший кадр как есть.
+  // Показывается ближайший к углу кадр набора, без перетекания между соседними (решение пользователя 2026-10-21:
+  // смешивание двух кадров выглядело размытием).
   function draw() {
     if (!available.length) return;
     const i = nearestFrame();
     shown = i;
     const bucket = Math.round(angle / set.stepDeg);   // повернули на шаг набора — пересчитать очередь загрузки
     if (bucket !== pumpedAt) { pumpedAt = bucket; pump(); }
-    const a = ((angle % 360) + 360) % 360, a0 = Math.floor(a / set.stepDeg) * set.stepDeg % 360;
-    const a1 = (a0 + set.stepDeg) % 360, t = (a - a0) / set.stepDeg;
-    const blend = t > 0.01 && t < 0.99 && frames.has(a0) && frames.has(a1);
     const img = frames.get(i);
     const k = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight) * view.zoom;
     const w = img.naturalWidth * k, h = img.naturalHeight * k;
@@ -587,22 +584,14 @@
     const x = (canvas.width - w) / 2;
     const gap = canvas.height - (y + h);
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const paint = (img, alpha) => {
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(img, x, y, w, h);
-      if (gap > 0) {
-        const src = Math.min(img.naturalHeight, gap / k);   // столько строк снизу кадра отражаем
-        ctx.save();
-        ctx.translate(0, y + h);
-        ctx.scale(1, -1);
-        ctx.drawImage(img, 0, img.naturalHeight - src, img.naturalWidth, src, x, -src * k, w, src * k);
-        ctx.restore();
-      }
-      ctx.globalAlpha = 1;
-    };
-    if (blend) { paint(frames.get(a0), 1); paint(frames.get(a1), t); }
-    else paint(img, 1);
+    ctx.drawImage(img, x, y, w, h);
     if (gap > 0) {
+      const src = Math.min(img.naturalHeight, gap / k);   // столько строк снизу кадра отражаем
+      ctx.save();
+      ctx.translate(0, y + h);
+      ctx.scale(1, -1);
+      ctx.drawImage(img, 0, img.naturalHeight - src, img.naturalWidth, src, x, -src * k, w, src * k);
+      ctx.restore();
       const g = ctx.createLinearGradient(0, y + h - gap * 0.3, 0, canvas.height);
       g.addColorStop(0, 'rgba(0,0,0,0)');
       g.addColorStop(1, 'rgba(0,0,0,0.6)');
@@ -611,8 +600,7 @@
       ctx.fillStyle = '#000';
     }
     // 3D-слой (overlay.js) рисуется в той же камере и с той же обрезкой: полный кадр w×h, его угол в (x, y).
-    // При перетекании камера 3D-слоя — на промежуточном угле, подсветки едут вместе с картинкой.
-    window.orbitFrame = { angle: blend ? a : i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y, designW: W,
+    window.orbitFrame = { angle: i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y, designW: W,
                           mask: masks.get(i) || null };
     screen.dispatchEvent(new Event('orbitframe'));
   }
@@ -636,8 +624,7 @@
 
   // --- Свайп по горизонтали крутит облёт, без инерции ---
   // Палец задаёт целевой угол, картинка догоняет его за ~FOLLOW_MS (сглаживает рывки событий касания).
-  // Отпустили — облёт останавливается: доводится только до ближайшего кадра набора (меньше шага), чтобы в покое
-  // был чистый кадр без перетекания и подсветки точно на нём.
+  // Отпустили — облёт сразу останавливается (целевой угол — на ближайшем кадре набора).
   const FOLLOW_MS = 60;
   let dragging = false, lastX = 0, target = angle;
   canvas.addEventListener('pointerdown', e => {
