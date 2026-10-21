@@ -154,7 +154,7 @@ function render() {
   if (!cam || !f) return;
   if (canvas.width !== f.width || canvas.height !== f.height) renderer.setSize(f.width, f.height, false);
   contourMat.resolution.set(f.width, f.height);
-  contourMat.linewidth = OUTLINE_SELECTED.widthPx * f.width / 430;   // px экрана дизайна 430×932 → px canvas
+  contourMat.linewidth = OUTLINE_SELECTED.widthPx * f.width / f.designW;   // px экрана дизайна → px canvas
   placeCamera(f.angle);
   // Тот же кадр, что у фона: полный кадр 4:3 размером coverW×coverH с углом в (x, y) canvas (cover + приближение).
   camera.fov = cam.camera.vFovDeg;
@@ -177,7 +177,7 @@ const placeEls = [...document.querySelectorAll('[data-place]')]
   .map(el => ({ el, p: ue(...PLACES[el.dataset.place]) }));
 const ndc = new THREE.Vector3();
 function placeIcons(f) {
-  const k = 430 / f.width;   // px canvas → px экрана дизайна
+  const k = f.designW / f.width;   // px canvas → px экрана дизайна
   for (const { el, p } of placeEls) {
     ndc.copy(p).project(camera);
     const inFront = !visible && ndc.z > -1 && ndc.z < 1;   // в режиме «квартиры» иконки скрыты
