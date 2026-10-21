@@ -26,6 +26,8 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--page-bg); overflow: hidden; }
+  /* Телефон: страница на весь экран (100lvh — и под панелями Safari), фон чёрный — если где-то и проглянет, не серый. */
+  html.phone, html.phone body { height: 100lvh; background: #000; }
   body { font-family: Manrope, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
 
   /* Экран дизайна 430×932, вписывается в окно через scale (см. fit()). На телефоне (.phone) — на всё окно: ширина 430,
@@ -63,7 +65,7 @@
   .lang { font-size: 14px; color: #4a4a4a; text-transform: uppercase; }
 
   /* Иконки зон САД / ЛОББИ (925:7945, 925:7941) — стоят в мировой точке UE, позицию каждый кадр ставит overlay.js
-     (центр плашки = точка, как Pivot 0.5×0.5 у WidgetComponent в UE). Пока без действий. */
+     (центр плашки = точка, как Pivot 0.5×0.5 у WidgetComponent в UE). САД открывает кадр двора, ЛОББИ — этажи. */
   .place {
     position: absolute; left: 0; top: 0; height: 44px; padding: 0 18px 0 48px;
     display: none; align-items: center; border-radius: 200px; background: rgba(38, 87, 70, 0.8);
@@ -74,6 +76,7 @@
                 background: rgba(64, 145, 117, 0.5); overflow: hidden; }
   .place .ico img { position: absolute; display: block; }
   .place.garden .ico img { left: 8.51px; top: 8.51px; width: 18.33px; height: 18.33px; }
+  .place.garden { pointer-events: auto; cursor: pointer; }                        /* открывает двор */
   .place.lobby { padding-right: 17px; pointer-events: auto; cursor: pointer; }   /* открывает этажи */
   .place.lobby .ico img { left: 5px; top: 5px; width: 26px; height: 26px; }
 
@@ -89,6 +92,19 @@
   .dock .filters     { background: none; cursor: pointer; transition: box-shadow .2s; }
   .dock .filters img { left: 0; top: 0; width: 50px; height: 50px; }
   .dock .filters.on  { box-shadow: 0 0 0 2px #b6d5b9; }
+  .dock .map         { cursor: pointer; transition: box-shadow .2s; }
+  .dock .map.on      { box-shadow: 0 0 0 2px #b6d5b9; }
+  /* Карта района (Figma «1 - Объект - Район»): кадр вместо облёта, шапка и кнопки те же. Открывается 4-й кнопкой дока.
+     Слой над облётом и 3D, под шапкой и доком; иконки САД/ЛОББИ на карте прячутся. */
+  .mapview {
+    position: absolute; inset: 0; background: #000; overflow: hidden; touch-action: none; cursor: grab;
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .mapview.open { opacity: 1; visibility: visible; }
+  .mapview img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; }
+  .mapview .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                      color: #b9d2c2; font-size: 14px; pointer-events: none; }
+  #screen.map-on .place, #screen.map-on .hint { visibility: hidden; }
   .dock .map img     { left: 12px; top: 12px; width: 25px; height: 25px; }
   .dock .share img   { left: 11px; top: 11px; width: 29px; height: 29px; transform: scaleX(-1); }
 
@@ -145,6 +161,7 @@
   .floors .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                      color: #b9d2c2; font-size: 14px; pointer-events: none; }
   .floors .header { z-index: 1; }
+  .floors.garden .floor-tabs { display: none; }   /* двор — тот же экран, один кадр, без переключателя этажей */
   .floor-pins > * { position: absolute; left: 0; top: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
   /* «360» (925:9474) — панорама точки обзора, стоит в точке её камеры. */
   .pin-360 {
@@ -178,6 +195,13 @@
   }
   .pano.open { opacity: 1; visibility: visible; }
   .pano canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Варианты одной панорамы (сравнение съёмки) — как переключатель этажей, в ряд. */
+  .pano-variants { position: absolute; left: 24px; top: 60px; display: flex; gap: 8px; z-index: 1; }
+  .pano-variants button {
+    height: 45px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px;
+    background: rgba(38, 87, 70, 0.7); color: #b9d2c2; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .pano-variants button.on { background: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
   .pano .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                    color: #b9d2c2; font-size: 14px; pointer-events: none; }
 
@@ -242,6 +266,10 @@
 <div id="screen">
   <canvas id="pano"></canvas>
   <canvas id="overlay"></canvas>
+  <div class="mapview" id="mapView">
+    <img id="mapImg" alt="" draggable="false">
+    <div class="loading" id="mapLoading">Загрузка…</div>
+  </div>
 
   <div class="hint" id="hint"></div>
 
@@ -258,7 +286,7 @@
     <div class="b light"><img src="assets/icon-light.png" alt=""></div>
     <div class="b fav"><img src="assets/icon-favorite.svg" alt=""></div>
     <div class="b filters" id="apts" role="button" aria-label="Квартиры"><img src="assets/btn-filters.svg" alt=""></div>
-    <div class="b map"><img src="assets/icon-map.svg" alt=""></div>
+    <div class="b map" id="dockMap" role="button" aria-label="Карта"><img src="assets/icon-map.svg" alt=""></div>
     <div class="b share"><img src="assets/icon-share.svg" alt=""></div>
   </div>
 
@@ -311,6 +339,7 @@
   <div class="pano" id="panoView">
     <canvas id="panoCanvas"></canvas>
     <div class="loading" id="panoLoading">Загрузка…</div>
+    <div class="pano-variants" id="panoVariants"></div>
     <button class="floors-close" id="panoClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
   </div>
 
@@ -324,10 +353,10 @@
     </div>
     <nav class="menu-list">
       <a href="#">О ПРОЕКТЕ</a>
-      <a href="#">РАЙОН</a>
+      <a href="#" id="menuMap">РАЙОН</a>
       <a href="#" id="menuOverview">ОБЩИЙ ВИД</a>
       <a href="#" id="menuFloors">ЛОББИ И ПАРКОВКА</a>
-      <a href="#">САД</a>
+      <a href="#" id="menuGarden">САД</a>
       <a href="#">ИЗБРАННОЕ</a>
     </nav>
     <div class="menu-cta">
@@ -355,7 +384,7 @@
     LQ: { count: 24,  stepDeg: 15, file: k => `test_${pad(k)}.webp` },
   };
   function pad(n) { return String(n).padStart(3, '0'); }
-  const SET = new URLSearchParams(location.search).get('set') || 'LQ';   // ?set=HQ — полный рендер
+  const SET = new URLSearchParams(location.search).get('set') || 'HQ';   // ?set=LQ — старый тестовый набор
   const DIR = `renders/360_Test/${SET}/`;
   const set = SETS[SET] || SETS.HQ;
   const DEG_PER_PX = 0.35;   // сколько градусов облёта на пиксель свайпа (в координатах экрана 430×932)
@@ -377,30 +406,57 @@
   // ориентации — как на ПК, весь макет в окне.
   const PHONE = qs.has('phone') ? qs.get('phone') === '1'
     : matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) < 600;
+  // Пробы — absolute, не fixed: Safari 26 красит свои панели под fixed-элементы у краёв экрана.
   const safeProbe = document.createElement('div');   // отступы под вырез и полоску «домой» (env() доступен только в CSS)
-  safeProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;' +
+  safeProbe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;' +
     'padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
   document.body.appendChild(safeProbe);
-  let scale = 1;
+  const lvhProbe = document.createElement('div');    // высота всего экрана, включая зону под панелями Safari (100lvh)
+  lvhProbe.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:100vh;height:100lvh;visibility:hidden;pointer-events:none';
+  document.body.appendChild(lvhProbe);
+  const STANDALONE = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  // Safari 26 (iOS 26): адресная строка — плавающая «таблетка» поверх страницы. Если окно не сообщает её высоту
+  // (видимая высота = весь экран), нижние кнопки поднимаются на TAB_BAR css px. ?tabbar=N — подбор.
+  const TAB_BAR = qs.has('tabbar') ? +qs.get('tabbar') : 62;
+  let scale = 1, vpInfo = '';
+  // ?vp — размеры окна Safari поверх страницы (проверка на телефоне).
+  const vpDebug = qs.has('vp') ? document.body.appendChild(Object.assign(document.createElement('div'), {
+    style: 'position:absolute;left:8px;right:8px;top:45%;z-index:99;padding:6px 8px;font:12px/1.4 monospace;' +
+      'color:#fff;background:rgba(0,0,0,.7);border-radius:6px;pointer-events:none;word-break:break-word',
+  })) : null;
   function fit() {
     const phone = PHONE && innerHeight > innerWidth;
     screen.classList.toggle('phone', phone);
-    let dt = 0, db = 0;
+    document.documentElement.classList.toggle('phone', phone);
+    let dt = 0, db = 0, top = '';
     if (phone) {
-      scale = innerWidth / W;
-      H = innerHeight / scale;
+      // Экран дизайна — на весь экран (под статус-баром и панелями Safari, как в Figma), кнопки — в видимой части.
+      const vv = window.visualViewport;
+      const visBottom = vv ? vv.offsetTop + vv.height : innerHeight;       // низ видимой части окна, css px
+      const full = Math.max(lvhProbe.getBoundingClientRect().height, innerHeight, visBottom);
       const cs = getComputedStyle(safeProbe);
-      const safeTop = parseFloat(cs.paddingTop) / scale, safeBottom = parseFloat(cs.paddingBottom) / scale;
-      dt = Math.max(safeTop + 6, 12) - 57;        // шапка — сразу под статус-баром / вырезом
-      db = H - safeBottom - H_CONTENT;            // низ макета (над адресной строкой) — к низу окна
+      const safeTop = parseFloat(cs.paddingTop), safeBottom = parseFloat(cs.paddingBottom);
+      // Видимая часть до низа экрана — значит, панель Safari (если есть) лежит поверх страницы, её высоту не знаем.
+      const overlayBar = !STANDALONE && visBottom >= full - 1;
+      const bottomGap = full - visBottom + (overlayBar ? TAB_BAR + safeBottom : full - visBottom > 0 ? 0 : safeBottom);
+      scale = innerWidth / W;
+      H = full / scale;
+      dt = Math.max(safeTop / scale + 6, 12) - 57;        // шапка — сразу под статус-баром / вырезом
+      db = H - bottomGap / scale - H_CONTENT;             // низ макета — к низу видимой части, над панелью Safari
+      top = `${full / 2}px`;
+      vpInfo = `inner ${innerWidth}×${innerHeight}  vv ${vv ? `${Math.round(vv.width)}×${Math.round(vv.height)}+${Math.round(vv.offsetTop)}` : '—'}` +
+        `  lvh ${Math.round(lvhProbe.getBoundingClientRect().height)}  screen ${window.screen.width}×${window.screen.height}` +
+        `  safe ${safeTop}/${safeBottom}  standalone ${!!STANDALONE}  overlayBar ${overlayBar}  gap ${Math.round(bottomGap)}`;
     } else {
       H = H_DESIGN;
       scale = Math.min(innerWidth / W, innerHeight / H);
     }
+    screen.style.top = top;
     screen.style.height = `${H}px`;
     screen.style.setProperty('--dt', `${dt}px`);
     screen.style.setProperty('--db', `${db}px`);
     screen.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    if (vpDebug) vpDebug.textContent = vpInfo;
     const dpr = Math.min(devicePixelRatio * scale, 3);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     draw();
@@ -408,39 +464,69 @@
 
   function showHint(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
 
-  // --- Загрузка кадров: пробуем все номера набора, берём те, что есть ---
+  // --- Загрузка кадров: постепенно, по приоритету; пробуем все номера набора, берём те, что есть ---
+  // Порядок: кадры рядом с текущим углом, затем грубый круг через 30° (облёт сразу крутится целиком — показывается
+  // ближайший загруженный кадр), затем через 10°, затем остальные — от ближних к текущему углу к дальним.
+  // Приоритет пересчитывается при повороте. Одновременно грузится LOAD_PARALLEL кадров.
+  // Телефон держит не больше KEEP.phone кадров (4K-кадр в памяти ~44 МБ): дальние от текущего угла мелкие кадры
+  // выгружаются и при повороте грузятся снова (из кэша браузера). ?keep=N — свой предел.
   // Рядом с кадром — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
   // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё.
+  const LOAD_PARALLEL = 4;
+  const KEEP = { phone: 48, desktop: Infinity };
+  const NEAR_DEG = 10;        // «рядом с текущим углом» — грузится первым
   const frames = new Map();   // угол облёта, ° -> Image
   const masks = new Map();    // угол облёта, ° -> Image маски
+  const loading = new Map();  // угол -> [Image кадра, Image маски] в загрузке
+  const missing = new Set();  // углы, которых нет в наборе
   let available = [];         // углы загруженных кадров
-  let pending = set.count;
-  for (let k = 0; k < set.count; k++) {
-    const i = k * set.stepDeg;
-    const img = new Image();
-    img.onload = () => {
-      frames.set(i, img);
-      available = [...frames.keys()].sort((a, b) => a - b);
-      draw();
-      done();
-    };
-    img.onerror = done;
-    img.src = DIR + set.file(k);
-    const mask = new Image();
-    mask.onload = () => { masks.set(i, mask); if (i === shown) draw(); };
-    mask.src = DIR + 'mask/' + set.file(k);
+  function priority(i) {
+    const d = Math.abs(i - (angle % 360 + 360) % 360), dc = Math.min(d, 360 - d);
+    const level = dc <= NEAR_DEG ? 0 : i % 30 === 0 ? 1 : i % 10 === 0 ? 2 : 3;
+    return level * 1000 + dc;
   }
-  function done() {
-    if (--pending) return;
-    showHint(available.length ? '' :
+  function pump() {
+    const keep = +qs.get('keep') || (PHONE ? KEEP.phone : KEEP.desktop);
+    const wanted = [];
+    for (let k = 0; k < set.count; k++) if (!missing.has(k * set.stepDeg)) wanted.push(k * set.stepDeg);
+    wanted.sort((a, b) => priority(a) - priority(b));
+    const want = new Set(wanted.slice(0, keep));
+    for (const i of frames.keys()) {   // выгрузка ненужных (текущий кадр не трогаем)
+      if (want.has(i) || i === shown) continue;
+      for (const img of [frames.get(i), masks.get(i)]) if (img) { img.onload = img.onerror = null; img.src = ''; }
+      frames.delete(i); masks.delete(i);
+      available = available.filter(a => a !== i);
+    }
+    for (const i of want) {
+      if (loading.size >= LOAD_PARALLEL) break;
+      if (!frames.has(i) && !loading.has(i)) load(i);
+    }
+    if (!loading.size && !available.length && missing.size === set.count) showHint(
       location.protocol === 'file:'
         ? 'Кадры не грузятся с file:// — запустите serve.cmd и откройте http://localhost:8080'
         : `Нет кадров в web/${DIR} — запустите sync.cmd ${SET}`);
   }
+  function load(i) {
+    const file = set.file(i / set.stepDeg);
+    const img = new Image(), mask = new Image();
+    loading.set(i, [img, mask]);
+    img.onload = () => {
+      loading.delete(i);
+      frames.set(i, img);
+      available = [...frames.keys()].sort((a, b) => a - b);
+      draw();
+      pump();
+    };
+    img.onerror = () => { loading.delete(i); missing.add(i); mask.src = ''; pump(); };
+    img.src = DIR + file;
+    mask.onload = () => { if (!frames.has(i)) return; masks.set(i, mask); if (i === shown) draw(); };
+    mask.src = DIR + 'mask/' + file;
+  }
 
   // --- Отрисовка: ближайший доступный кадр к текущему углу, обрезка 4:3 по центру (cover) ---
   let angle = +new URLSearchParams(location.search).get('angle') || 0;   // угол облёта от кадра 0, ° (?angle=90)
-  let shown = -1;
+  let shown = -1, pumpedAt = 0;
+  pump();
   function nearestFrame() {
     const want = (angle % 360 + 360) % 360;
     let best = available[0], bestD = Infinity;
@@ -453,8 +539,11 @@
   function draw(force = true) {
     if (!available.length) return;
     const i = nearestFrame();
-    if (i === shown && !force) return;
+    const same = i === shown && !force;
     shown = i;
+    const bucket = Math.round(angle / set.stepDeg);   // повернули на шаг набора — пересчитать очередь загрузки
+    if (bucket !== pumpedAt) { pumpedAt = bucket; pump(); }
+    if (same) return;
     const img = frames.get(i);
     const k = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight) * view.zoom;
     const w = img.naturalWidth * k, h = img.naturalHeight * k;
@@ -583,9 +672,11 @@
   document.getElementById('aptLeft').onclick = () => rotateBy(-ARROW_DEG);
   document.getElementById('aptRight').onclick = () => rotateBy(ARROW_DEG);
 
-  // --- Панорама и приближение картинки на весь экран (3D-план, этажи) ---
+  // --- Панорама и приближение картинки на весь экран (3D-план, этажи, двор) ---
   // Старт — на весь экран (cover); палец/мышь — панорама, щипок/колесо — приближение вокруг точки
-  // (от «вся картинка» до maxZoom × cover), двойной тап — приблизить/вернуть. Кнопки внутри root жестов не ловят.
+  // (от cover до maxZoom × cover), двойной тап — приблизить/вернуть. Кнопки внутри root жестов не ловят.
+  // Меньше cover отдалять нельзя (решение пользователя 2026-10-21): на телефоне верх и низ картинки упираются в верх и
+  // низ экрана — кадры шире экрана, так что cover = по высоте; пустых полей вокруг картинки не бывает.
   // render(v) получает масштаб v.s и сдвиг v.x, v.y картинки iw×ih в px экрана дизайна.
   const toDesign = e => { const r = screen.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale }; };
   function panZoom(root, maxZoom, render) {
@@ -603,11 +694,11 @@
       v.x = cx - (cx - v.x) * s / v.s; v.y = cy - (cy - v.y) * s / v.s; v.s = s;
       apply();
     }
-    function reset(iw, ih) {
+    function reset(iw, ih, start = 1) {   // start — старт ближе cover во столько раз
       v.iw = iw; v.ih = ih;
-      v.min = Math.min(W / iw, H / ih);     // вся картинка
       v.cover = Math.max(W / iw, H / ih);   // на весь экран
-      v.s = v.cover; v.x = (W - iw * v.s) / 2; v.y = (H - ih * v.s) / 2;
+      v.min = v.cover * start;              // дальше старта не отдаляется
+      v.s = v.min; v.x = (W - iw * v.s) / 2; v.y = (H - ih * v.s) / 2;
       apply();
     }
 
@@ -683,7 +774,13 @@
   //         (data/pano/camera.json, мировая точка камеры → пиксель по projection кадра); нажатие открывает pano.js;
   //   P-1 — Widget (PARKING -2) → «Parking -2  M9». Остальные якоря (подписи зон лобби, кладовые) в макете не нарисованы.
   // Открывают: иконка ЛОББИ на общем виде, пункт меню «ЛОББИ И ПАРКОВКА»; ?floor=F1|P-1|P-2 — сразу (для проверки).
+  // Двор — тот же экран без переключателя этажей: кадр renders/Floors_Test/garden_G.webp и data/garden/camera.json
+  // (ue/garden_shots.py, Docs/CAMERAS.md). Открывают иконка САД и пункт меню «САД»; ?garden — сразу. Кнопки — «360» в точках
+  // панорам двора (BP_GardenCamera*), пока их нет — кадр без кнопок. Другая камера, поэтому при переходе двор ↔ этажи
+  // вид сбрасывается на весь экран.
   const FLOORS_DIR = 'renders/Floors_Test/';
+  const SHOT_SETS = { floors: 'data/floors/camera.json', garden: 'data/garden/camera.json' };
+  const isGardenPano = p => p.id.startsWith('BP_GardenCamera');
   const FLOOR_MAX_ZOOM = 3;
   const floors = document.getElementById('floors');
   const floorShots = document.getElementById('floorShots');
@@ -699,8 +796,9 @@
       else if (a.class === 'BP_Parking_01' && a.widget === 'Widget')
         pins.push({ a, park: 'Parking -2  M9', go: 'P-2' });
     }
-    if (shot.id === 'F1')
-      for (const p of panoPoints) {
+    if (shot.id === 'F1' || shot.id === 'G')
+      // Варианты точки (variantOf) — без своей кнопки, переключаются в самой панораме.
+      for (const p of panoPoints.filter(p => !p.variantOf && isGardenPano(p) === (shot.id === 'G'))) {
         const px = projectPixel(shot, p.location);
         if (px && px[0] >= 0 && px[0] < shot.image.width && px[1] >= 0 && px[1] < shot.image.height)
           pins.push({ a: { pixel: px, pivot: [0.5, 0.5] }, text: '360', pano: p.id });
@@ -714,7 +812,7 @@
   }
   // Панорамы точек обзора (pano.js). Нет файла — кнопок «360» просто нет.
   let panoPoints = [];
-  const panoLoaded = fetch('data/pano/camera.json').then(r => r.json()).then(d => { panoPoints = d.points; }).catch(() => {});
+  const panoLoaded = fetch('data/pano/camera.json', { cache: 'no-cache' }).then(r => r.json()).then(d => { panoPoints = d.points; }).catch(() => {});
   const floorView = panZoom(floors, FLOOR_MAX_ZOOM, v => {
     for (const img of floorShots.children) img.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`;
     // Кнопки не масштабируются вместе с картинкой — только встают в свою точку кадра.
@@ -723,9 +821,10 @@
       el.style.transform = `translate(${v.x + u * v.s}px, ${v.y + w * v.s}px) translate(${-px * 100}%, ${-py * 100}%)`;
     }
   });
-  let floorData = null, floorCur = null, floorFitted = false;
-  function loadFloors() {   // camera.json и все три кадра — сразу, чтобы переключение было мгновенным
-    return floorData ||= fetch('data/floors/camera.json').then(r => r.json()).then(d => {
+  const shotData = {};
+  let floorCur = null, fittedSet = null;
+  function loadShots(set) {   // camera.json и все кадры набора — сразу, чтобы переключение было мгновенным
+    return shotData[set] ||= fetch(SHOT_SETS[set]).then(r => r.json()).then(d => {
       for (const shot of d.shots) {
         const img = shot.img = new Image();
         img.className = 'shot'; img.alt = ''; img.draggable = false;
@@ -753,18 +852,20 @@
     el._pixel = p.a.pixel; el._pivot = p.a.pivot;
     return el;
   }
-  async function showFloor(id) {
+  async function showFloor(id, set = 'floors') {
     floorCur = id;
+    floors.classList.toggle('garden', set === 'garden');
     floorTabs.forEach(b => b.classList.toggle('on', b.dataset.floor === id));
     floorPins.replaceChildren();
+    for (const img of floorShots.children) img.classList.remove('on');
     floorsLoading.textContent = 'Загрузка…'; floorsLoading.style.display = '';
     let shot;
     try {
-      shot = (await loadFloors()).shots.find(s => s.id === id);
+      shot = (await loadShots(set)).shots.find(s => s.id === id);
       await Promise.all([shot.loaded, panoLoaded]);
     } catch (e) {
       console.error('floors:', e);
-      floorsLoading.textContent = 'Нет data/floors/camera.json — запустите sync.cmd';
+      floorsLoading.textContent = `Нет ${SHOT_SETS[set]} — запустите sync.cmd`;
       return;
     }
     if (floorCur !== id) return;   // пока грузилось, выбрали другой этаж
@@ -772,24 +873,62 @@
     floorsLoading.style.display = 'none';
     for (const img of floorShots.children) img.classList.toggle('on', img === shot.img);
     floorPins.replaceChildren(...floorPinsFor(shot).map(makePin));
-    // Камера у кадров одна: на весь экран — только при первом показе, дальше панорама и масштаб сохраняются.
-    if (!floorFitted) { floorFitted = true; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight); }
+    // Камера у кадров набора одна: на весь экран — только при первом показе набора, дальше панорама и масштаб сохраняются.
+    if (fittedSet !== set) { fittedSet = set; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight); }
     else floorView.redraw();
   }
-  function openFloors(id = 'F1') {
+  function openFloors(id = 'F1', set = 'floors') {
     menu.classList.remove('open');
     floors.classList.add('open');
-    showFloor(id);
+    showFloor(id, set);
   }
+  const openGarden = () => openFloors('G', 'garden');
   floorTabs.forEach(b => b.onclick = () => { if (b.dataset.floor !== floorCur) showFloor(b.dataset.floor); });
   document.querySelector('.place.lobby').onclick = () => openFloors();
+  document.querySelector('.place.garden').onclick = openGarden;
   document.getElementById('menuFloors').addEventListener('click', () => openFloors());
+  document.getElementById('menuGarden').addEventListener('click', openGarden);
+  if (qs.has('garden')) openGarden();
   document.getElementById('floorsBurger').onclick = () => menu.classList.add('open');
   document.getElementById('floorsClose').onclick = () => floors.classList.remove('open');
-  document.getElementById('menuOverview').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); });
+  document.getElementById('menuOverview').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); setMap(false); });
   if (qs.has('floor')) openFloors(qs.get('floor'));
 
+  // --- Карта района (4-я кнопка дока, Figma «1 - Объект - Район», Docs/FLOORS.md «Карта») ---
+  // Кадр renders/Floors_Test/map_M.webp — камера карты приложения на самом дальнем зуме (ue/map_shots.py,
+  // data/map/camera.json). Пока просто включается картинка вместо облёта (потом — видеопереход); шапка и док остаются.
+  // Старт чуть ближе полного кадра — MAP_START_ZOOM (?mapzoom=), дальше старта не отдаляется, приближение — до MAP_MAX_ZOOM
+  // от полного кадра. Включают кнопка карты и пункт меню «РАЙОН», выключают та же кнопка и «ОБЩИЙ ВИД»; ?map — сразу.
+  const MAP_SRC = 'renders/Floors_Test/map_M.webp';
+  const MAP_START_ZOOM = +qs.get('mapzoom') || 1.25;
+  const MAP_MAX_ZOOM = 3;
+  const mapView = document.getElementById('mapView');
+  const mapImg = document.getElementById('mapImg');
+  const mapLoading = document.getElementById('mapLoading');
+  const mapBtn = document.getElementById('dockMap');
+  const mapPZ = panZoom(mapView, MAP_MAX_ZOOM, v => { mapImg.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`; });
+  mapImg.onload = () => { mapLoading.style.display = 'none'; mapPZ.reset(mapImg.naturalWidth, mapImg.naturalHeight, MAP_START_ZOOM); };
+  mapImg.onerror = () => { mapLoading.textContent = `Нет кадра web/${MAP_SRC} — запустите sync.cmd`; };
+  function setMap(on) {
+    if (on) {
+      // Карта — отдельный вид: режим «квартиры» и попап выключаем.
+      screen.dispatchEvent(new Event('apartmentclear'));
+      const apts = document.getElementById('apts');
+      if (apts.classList.contains('on')) apts.click();
+      if (!mapImg.getAttribute('src')) mapImg.src = MAP_SRC;
+      else if (mapImg.naturalWidth) mapPZ.reset(mapImg.naturalWidth, mapImg.naturalHeight, MAP_START_ZOOM);   // каждый раз со старта
+    }
+    mapView.classList.toggle('open', on);
+    mapBtn.classList.toggle('on', on);
+    screen.classList.toggle('map-on', on);
+  }
+  mapBtn.onclick = () => setMap(!mapView.classList.contains('open'));
+  document.getElementById('menuMap').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); setMap(true); });
+  document.getElementById('apts').addEventListener('click', () => setMap(false));   // режим «квартиры» — на облёте
+  if (qs.has('map')) setMap(true);
+
   addEventListener('resize', fit);
+  if (window.visualViewport) visualViewport.addEventListener('resize', fit);
   fit();
   // Android: полноэкранный режим по первому касанию (iPhone так не умеет — там «На экран Домой»).
   if (PHONE && document.documentElement.requestFullscreen && matchMedia('(display-mode: browser)').matches) {

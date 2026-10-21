@@ -41,6 +41,24 @@
  "facesNote": "Cube faces aligned to UE world axes; each face is a pinhole camera at 'location' with this rotation and 90° FOV (square). Names: p/n = plus/minus world axis the face looks along.",
  "points": [
   {
+   "id": "BP_GardenCamera1",
+   "variantLabel": "mrq le0",
+   "variantNote": "2026-10-21: Movie Render Queue Panoramic pass 8x3, history per pane, 8 temporal samples, camera post process from the point",
+   "cameraActor": "BP_GardenCamera1",
+   "tags": [],
+   "location": [
+    -10549.451520078706,
+    -1258.2015567768672,
+    13762.278033
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -25.200022000000025
+   },
+   "equirect": "mrq/BP_GardenCamera1_le0_test.png",
+   "equirectYaw": -25.200022000000025
+  },
+  {
    "id": "BP_LobbyCamera6",
    "cameraActor": "BP_LobbyCamera6",
    "tags": [
@@ -62,7 +80,51 @@
     "ny": "BP_LobbyCamera6/ny.png",
     "pz": "BP_LobbyCamera6/pz.png",
     "nz": "BP_LobbyCamera6/nz.png"
-   }
+   },
+   "defaultVariant": "BP_LobbyCamera6_mrq_le0",
+   "variantLabel": "куб"
+  },
+  {
+   "id": "BP_LobbyCamera6_mrq",
+   "variantOf": "BP_LobbyCamera6",
+   "variantLabel": "mrq",
+   "variantNote": "2026-10-21: Movie Render Queue Panoramic pass 8x3, history per pane, 8 temporal samples, camera post process from the point",
+   "cameraActor": "BP_LobbyCamera6",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -7160.682467779157,
+    -534.9657394300029,
+    13791.076069734145
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 171.24208679236062
+   },
+   "equirect": "mrq/BP_LobbyCamera6_test.png",
+   "equirectYaw": 171.24208679236062
+  },
+  {
+   "id": "BP_LobbyCamera6_mrq_le0",
+   "variantOf": "BP_LobbyCamera6",
+   "variantLabel": "mrq le0",
+   "variantNote": "2026-10-21: Movie Render Queue Panoramic pass 8x3, history per pane, 8 temporal samples, camera post process from the point",
+   "cameraActor": "BP_LobbyCamera6",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -7160.682467779157,
+    -534.9657394300029,
+    13791.076069734145
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 171.24208679236062
+   },
+   "equirect": "mrq/BP_LobbyCamera6_le0_test.png",
+   "equirectYaw": 171.24208679236062
   },
   {
    "id": "BP_LobbyCamera7",
@@ -86,7 +148,154 @@
     "ny": "BP_LobbyCamera7/ny.png",
     "pz": "BP_LobbyCamera7/pz.png",
     "nz": "BP_LobbyCamera7/nz.png"
-   }
+   },
+   "variantLabel": "v2",
+   "variantNote": "2026-10-21: screen traces/SSR/SSAO off, local exposure neutral, overscan 0.5",
+   "variantHidden": true,
+   "defaultVariant": "BP_LobbyCamera7_mrq_le0"
+  },
+  {
+   "id": "BP_LobbyCamera7_mrq",
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "mrq",
+   "variantNote": "2026-10-21: Movie Render Queue Panoramic pass 8x3, history per pane, 8 temporal samples, camera post process from the point",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.94763968416737,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -66.19934149803584
+   },
+   "equirect": "mrq/BP_LobbyCamera7_test.png",
+   "equirectYaw": -66.19934149803584,
+   "variantHidden": false
+  },
+  {
+   "id": "BP_LobbyCamera7_mrq_le0",
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "mrq le0",
+   "variantNote": "2026-10-21: Movie Render Queue Panoramic pass 8x3, history per pane, 8 temporal samples, camera post process from the point",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.94763968416737,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -66.19934149803584
+   },
+   "equirect": "mrq/BP_LobbyCamera7_le0_test.png",
+   "equirectYaw": -66.19934149803584
+  },
+  {
+   "id": "BP_LobbyCamera7_plugin",
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "plugin",
+   "variantNote": "2026-10-21: PanoramicCaptureCustom with BP_360Capture settings (ue/pano_plugin.py), equirect 6144x3072, no PPV",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.94763968416737,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": -2.0000000000000004,
+    "yaw": -66.19934149803584
+   },
+   "equirect": "plugin/2026.10.21-09.39.51/BP_LobbyCamera7.png",
+   "equirectYaw": -66.19934149803584,
+   "variantHidden": true
+  },
+  {
+   "id": "BP_LobbyCamera7_pluginppv",
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "plugin+PPV",
+   "variantNote": "2026-10-21: PanoramicCaptureCustom, BP_360Capture settings + SP.ApplyPostProcessVolume 1 (ue/pano_plugin.py ppv)",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.94763968416737,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": -2.0000000000000004,
+    "yaw": -66.19934149803584
+   },
+   "equirect": "plugin/2026.10.21-09.44.10/BP_LobbyCamera7.png",
+   "equirectYaw": -66.19934149803584,
+   "variantHidden": false
+  },
+  {
+   "id": "BP_LobbyCamera7_v1",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.94763968416737,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": -2.0000000000000004,
+    "yaw": -66.19934149803584
+   },
+   "faces": {
+    "px": "BP_LobbyCamera7_v1/px.png",
+    "py": "BP_LobbyCamera7_v1/py.png",
+    "nx": "BP_LobbyCamera7_v1/nx.png",
+    "ny": "BP_LobbyCamera7_v1/ny.png",
+    "pz": "BP_LobbyCamera7_v1/pz.png",
+    "nz": "BP_LobbyCamera7_v1/nz.png"
+   },
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "v1",
+   "variantNote": "2026-10-20: screen-space effects on, overscan 0.2",
+   "variantHidden": false
+  },
+  {
+   "id": "BP_LobbyCamera7_v3",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.9476396841677,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": 9.442271710594819e-16,
+    "yaw": -66.19934149803585
+   },
+   "faces": {
+    "px": "BP_LobbyCamera7_v3/px.png",
+    "py": "BP_LobbyCamera7_v3/py.png",
+    "nx": "BP_LobbyCamera7_v3/nx.png",
+    "ny": "BP_LobbyCamera7_v3/ny.png",
+    "pz": "BP_LobbyCamera7_v3/pz.png",
+    "nz": "BP_LobbyCamera7_v3/nz.png"
+   },
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "v3",
+   "variantNote": "2026-10-21: screen-space off ['r.Lumen.ScreenProbeGather.ShortRangeAO', 'r.Lumen.Reflections.ScreenTraces', 'r.SSR.Quality', 'r.AmbientOcclusionLevels'], overscan 0.5",
+   "variantHidden": true
   }
  ]
 }

@@ -1,0 +1,162 @@
+{
+ "version": 1,
+ "coordinateSystem": "UE: X forward, Y right, Z up, left-handed, centimeters; rotation in degrees",
+ "image": {
+  "fileNameFormat": "garden_{id}.png"
+ },
+ "camera": {
+  "sensorWidthMm": 23.76,
+  "fovAxis": "horizontal"
+ },
+ "projectionNote": "as data/floors/camera.json: pixel [u*w, v*w, w] = projection(3x4) * [X, Y, Z, 1]; floorHomography(3x3) * [X, Y, 1] for points on Z = floorZ (courtyard ground). appView.rect [x, y, w, h]: the app camera view (rig.focalMm) inside the wider frame (rig.overscan) — a start view for the web, the margins are for panning.",
+ "shots": [
+  {
+   "id": "G",
+   "title": "Двор",
+   "file": "garden_G.png",
+   "rig": {
+    "pivot": [
+     -9813.0,
+     -2334.0,
+     14072.0
+    ],
+    "yaw": 23.9,
+    "pitch": -67.6,
+    "arm": 5500.0,
+    "focalMm": 25.0,
+    "overscan": 0.0
+   },
+   "location": [
+    -11729.173172868033,
+    -3183.131055328741,
+    19157.00312905087
+   ],
+   "rotation": {
+    "pitch": -67.59999847412118,
+    "yaw": 23.899999618530313,
+    "roll": -0.0
+   },
+   "focalLengthMm": 25.0,
+   "hFovDeg": 50.83413405394583,
+   "vFovDeg": 22.399412047586466,
+   "image": {
+    "width": 3840,
+    "height": 1600
+   },
+   "overscan": 0.0,
+   "appView": {
+    "focalLengthMm": 25.0,
+    "hFovDeg": 50.83413405394583,
+    "rect": [
+     0.0,
+     0.0,
+     3840.0,
+     1600.0
+    ]
+   },
+   "projection": [
+    [
+     -968.0170327387875,
+     3990.379322913865,
+     -1775.128365050487,
+     35354000.577768825
+    ],
+    [
+     -3136.5156567462172,
+     -1389.9123847889161,
+     -2279.3152406793383,
+     2451840.624191504
+    ],
+    [
+     0.3483951223396411,
+     0.1543874646052253,
+     -0.9245460234637953,
+     22289.35332009002
+    ]
+   ],
+   "floorZ": 13762.316272333332,
+   "floorHomography": [
+    [
+     -968.0170327387875,
+     3990.379322913865,
+     10924122.593954045
+    ],
+    [
+     -3136.5156567462172,
+     -1389.9123847889161,
+     -28916816.60238712
+    ],
+    [
+     0.3483951223396411,
+     0.1543874646052253,
+     9565.458536853155
+    ]
+   ],
+   "anchors": [
+    {
+     "class": "BP_CourtyardViewItem",
+     "actor": "BP_CourtyardViewItem",
+     "widget": "Widget",
+     "index": 2,
+     "world": [
+      -10468.546693,
+      -1098.627336,
+      13762.278033
+     ],
+     "pixel": [
+      2900.5,
+      947.2
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_CourtyardViewItem",
+     "actor": "BP_CourtyardViewItem2",
+     "widget": "Widget",
+     "index": 1,
+     "world": [
+      -9497.908352,
+      -2410.615915,
+      13756.647176
+     ],
+     "pixel": [
+      1784.4,
+      719.4
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_CourtyardViewItem",
+     "actor": "BP_CourtyardViewItem3",
+     "widget": "Widget",
+     "index": 0,
+     "world": [
+      -9215.25375,
+      -4215.853947,
+      13768.023608
+     ],
+     "pixel": [
+      528.5,
+      1023.7
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    }
+   ]
+  }
+ ]
+}

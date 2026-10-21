@@ -1,0 +1,70 @@
+{
+ "version": 1,
+ "coordinateSystem": "UE: X forward, Y right, Z up, left-handed, centimeters; rotation in degrees",
+ "image": {
+  "fileNameFormat": "map_{id}.png",
+  "width": 3840,
+  "height": 2160
+ },
+ "camera": {
+  "sensorWidthMm": 23.76,
+  "fovAxis": "horizontal"
+ },
+ "projectionNote": "as data/floors/camera.json: pixel [u*w, v*w, w] = projection(3x4) * [X, Y, Z, 1], u = right, v = down from top-left of the image.",
+ "shots": [
+  {
+   "id": "M",
+   "title": "Карта",
+   "file": "map_M.png",
+   "rig": {
+    "pivot": [
+     -6694.7,
+     477.0,
+     16814.7
+    ],
+    "yaw": -85.0,
+    "pitch": -40.0,
+    "arm": 2486248.25,
+    "focalMm": 75.0
+   },
+   "location": [
+    -172689.4930845809,
+    1897806.1669428076,
+    1614944.2697048413
+   ],
+   "rotation": {
+    "pitch": -40.00000000000004,
+    "yaw": -84.99999999999999,
+    "roll": 4.1519192653023806e-15
+   },
+   "focalLengthMm": 75.0,
+   "hFovDeg": 18.001739369989064,
+   "vFovDeg": 10.183217179466602,
+   "image": {
+    "width": 3840,
+    "height": 2160
+   },
+   "projection": [
+    [
+     12203.276368498495,
+     -408.77508826385724,
+     -1234.1522105981574,
+     4876240533.895845
+    ],
+    [
+     -606.9558992305455,
+     6937.536646340118,
+     -9979.59784991798,
+     2845579624.3049784
+    ],
+    [
+     0.06676517241775082,
+     -0.7631294127377692,
+     -0.6427876096865399,
+     2497867.516350257
+    ]
+   ],
+   "anchors": []
+  }
+ ]
+}
