@@ -263,6 +263,27 @@
    "equirectYaw": -66.25184150000597
   },
   {
+   "id": "BP_LobbyCamera7_sph_hq",
+   "variantOf": "BP_LobbyCamera7",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera7",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8290.760000222352,
+    431.94763968416737,
+    13764.9999975371
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -66.19934149803584
+   },
+   "equirect": "sph/BP_LobbyCamera7_sph_hq.png",
+   "equirectYaw": -66.19934149803584
+  },
+  {
    "id": "BP_LobbyCamera7_v1",
    "cameraActor": "BP_LobbyCamera7",
    "tags": [
