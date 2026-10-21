@@ -56,7 +56,8 @@
     "yaw": -25.200022000000025
    },
    "equirect": "mrq/BP_GardenCamera1_le0_test.png",
-   "equirectYaw": -25.200022000000025
+   "equirectYaw": -25.200022000000025,
+   "defaultVariant": "BP_GardenCamera1_sph_hq"
   },
   {
    "id": "BP_GardenCamera1_sph_hq",
@@ -76,6 +77,222 @@
    },
    "equirect": "sph/BP_GardenCamera1_sph_hq.png",
    "equirectYaw": -25.200022000000025
+  },
+  {
+   "id": "BP_GardenCamera2",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_GardenCamera2",
+   "tags": [],
+   "location": [
+    -9758.88616683639,
+    -2720.825383863113,
+    13756.64717638954
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 12.091224473992112
+   },
+   "equirect": "sph/BP_GardenCamera2_sph_hq.png",
+   "equirectYaw": 12.091224473992112
+  },
+  {
+   "id": "BP_GardenCamera3",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_GardenCamera3",
+   "tags": [],
+   "location": [
+    -9154.992876109909,
+    -4496.819319888302,
+    13768.023608
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 105.12192217632901
+   },
+   "equirect": "sph/BP_GardenCamera3_sph_hq.png",
+   "equirectYaw": 105.12192217632901
+  },
+  {
+   "id": "BP_GymCamera1",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_GymCamera1",
+   "tags": [
+    "Gym"
+   ],
+   "location": [
+    -8298.082048385293,
+    -2575.409429730777,
+    13765.000000532358
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -38.17399938940534
+   },
+   "equirect": "sph/BP_GymCamera1_sph_hq.png",
+   "equirectYaw": -38.17399938940534
+  },
+  {
+   "id": "BP_GymCamera2",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_GymCamera2",
+   "tags": [
+    "Gym"
+   ],
+   "location": [
+    -7912.8344309287195,
+    -2704.5039225277696,
+    13765.000000069924
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -66.23222226030973
+   },
+   "equirect": "sph/BP_GymCamera2_sph_hq.png",
+   "equirectYaw": -66.23222226030973
+  },
+  {
+   "id": "BP_GymCamera3",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_GymCamera3",
+   "tags": [
+    "Gym"
+   ],
+   "location": [
+    -7511.008887310842,
+    -3379.739918358915,
+    13765.0
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 6.052073168632679
+   },
+   "equirect": "sph/BP_GymCamera3_sph_hq.png",
+   "equirectYaw": 6.052073168632679
+  },
+  {
+   "id": "BP_LobbyCamera1",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera1",
+   "tags": [
+    "Gallery"
+   ],
+   "location": [
+    -9483.111573787775,
+    3090.895578275425,
+    13778.585843721936
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -72.9461827457104
+   },
+   "equirect": "sph/BP_LobbyCamera1_sph_hq.png",
+   "equirectYaw": -72.9461827457104
+  },
+  {
+   "id": "BP_LobbyCamera10",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera10",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -9819.753817349401,
+    1186.3788714009613,
+    13764.999994442624
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 26.732478338251333
+   },
+   "equirect": "sph/BP_LobbyCamera10_sph_hq.png",
+   "equirectYaw": 26.732478338251333
+  },
+  {
+   "id": "BP_LobbyCamera2",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera2",
+   "tags": [
+    "Gallery"
+   ],
+   "location": [
+    -8618.87125582377,
+    2496.9320816802647,
+    13744.755649454404
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 179.0
+   },
+   "equirect": "sph/BP_LobbyCamera2_sph_hq.png",
+   "equirectYaw": 179.0
+  },
+  {
+   "id": "BP_LobbyCamera3",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera3",
+   "tags": [
+    "Gallery"
+   ],
+   "location": [
+    -7846.523671967142,
+    1242.0337475594815,
+    13808.664666
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 127.77882799999996
+   },
+   "equirect": "sph/BP_LobbyCamera3_sph_hq.png",
+   "equirectYaw": 127.77882799999996
+  },
+  {
+   "id": "BP_LobbyCamera4",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera4",
+   "tags": [
+    "GuestRoom"
+   ],
+   "location": [
+    -6856.1040884867425,
+    -406.7700166910472,
+    13728.585236499395
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -38.65315818167605
+   },
+   "equirect": "sph/BP_LobbyCamera4_sph_hq.png",
+   "equirectYaw": -38.65315818167605
+  },
+  {
+   "id": "BP_LobbyCamera5",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera5",
+   "tags": [
+    "GuestRoom"
+   ],
+   "location": [
+    -6562.0209282434735,
+    -419.3882272638695,
+    13765.0
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -75.66604301396733
+   },
+   "equirect": "sph/BP_LobbyCamera5_sph_hq.png",
+   "equirectYaw": -75.66604301396733
   },
   {
    "id": "BP_LobbyCamera6",
@@ -100,7 +317,7 @@
     "pz": "BP_LobbyCamera6/pz.png",
     "nz": "BP_LobbyCamera6/nz.png"
    },
-   "defaultVariant": "BP_LobbyCamera6_mrq_le0",
+   "defaultVariant": "BP_LobbyCamera6_sph_hq",
    "variantLabel": "куб"
   },
   {
@@ -146,6 +363,27 @@
    "equirectYaw": 171.24208679236062
   },
   {
+   "id": "BP_LobbyCamera6_sph_hq",
+   "variantOf": "BP_LobbyCamera6",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera6",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -7160.681865709276,
+    -534.9658321825452,
+    13791.04117023742
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 171.24208679236062
+   },
+   "equirect": "sph/BP_LobbyCamera6_sph_hq.png",
+   "equirectYaw": 171.24208679236062
+  },
+  {
    "id": "BP_LobbyCamera7",
    "cameraActor": "BP_LobbyCamera7",
    "tags": [
@@ -171,7 +409,7 @@
    "variantLabel": "v2",
    "variantNote": "2026-10-21: screen traces/SSR/SSAO off, local exposure neutral, overscan 0.5",
    "variantHidden": true,
-   "defaultVariant": "BP_LobbyCamera7_mrq_le0"
+   "defaultVariant": "BP_LobbyCamera7_sph_hq"
   },
   {
    "id": "BP_LobbyCamera7_mrq",
@@ -357,6 +595,86 @@
    "variantLabel": "v3",
    "variantNote": "2026-10-21: screen-space off ['r.Lumen.ScreenProbeGather.ShortRangeAO', 'r.Lumen.Reflections.ScreenTraces', 'r.SSR.Quality', 'r.AmbientOcclusionLevels'], overscan 0.5",
    "variantHidden": true
+  },
+  {
+   "id": "BP_LobbyCamera8",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera8",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8856.466224667422,
+    -533.2063500788425,
+    13764.999998
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -7.453854366149356
+   },
+   "equirect": "sph/BP_LobbyCamera8_sph_hq.png",
+   "equirectYaw": -7.453854366149356
+  },
+  {
+   "id": "BP_LobbyCamera9",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_LobbyCamera9",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8156.907114241599,
+    -1122.831252027474,
+    13764.999998
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": 104.13280203798703
+   },
+   "equirect": "sph/BP_LobbyCamera9_sph_hq.png",
+   "equirectYaw": 104.13280203798703
+  },
+  {
+   "id": "BP_MakeupCamera1",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_MakeupCamera1",
+   "tags": [
+    "Massage01"
+   ],
+   "location": [
+    -8217.59022522571,
+    -2131.2048339609455,
+    13765.566948774424
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -38.173999
+   },
+   "equirect": "sph/BP_MakeupCamera1_sph_hq.png",
+   "equirectYaw": -38.173999
+  },
+  {
+   "id": "BP_MassageCamera1",
+   "variantLabel": "скрины hq",
+   "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
+   "cameraActor": "BP_MassageCamera1",
+   "tags": [
+    "Massage02"
+   ],
+   "location": [
+    -7196.092434164065,
+    -2808.59045606623,
+    13765.00000371859
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -178.6610652061466
+   },
+   "equirect": "sph/BP_MassageCamera1_sph_hq.png",
+   "equirectYaw": -178.6610652061466
   }
  ]
 }
