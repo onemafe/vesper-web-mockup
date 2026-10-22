@@ -218,6 +218,11 @@
   .gpath-frames img { position: absolute; max-width: none; pointer-events: none; visibility: hidden; }
   .gpath.open .gpath-frames img.on { visibility: visible; }   /* только при .open: видимый потомок иначе виден и в скрытом слое */
   .gpath .header { z-index: 1; }
+  /* Видео B (K ↔ середина отрезка) — на месте кадров, пока играет (.zooming): кадры и «360» спрятаны. */
+  .gpath-video { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; visibility: hidden; }
+  .gpath.open .gpath-video.on { visibility: visible; }
+  .gpath.zooming .gpath-frames, .gpath.zooming .floor-pins { visibility: hidden; }
+  .gpath.snap { transition: none; }
   /* Панорама 360 точки обзора (pano.js) — поверх этажей; макета нет, только крестик как у этажей. */
   .pano {
     position: absolute; inset: 0; z-index: 2; background: #000; overflow: hidden; touch-action: none; cursor: grab;   /* выше вкладок и шапки этажей (z-index 1) */
@@ -403,6 +408,8 @@
   <div class="flight" id="flight">
     <video id="flightFwd" muted playsinline preload="auto"></video>
     <video id="flightRev" muted playsinline preload="auto"></video>
+    <video id="gardenFwd" muted playsinline preload="auto"></video>
+    <video id="gardenRev" muted playsinline preload="auto"></video>
   </div>
 
   <div class="floors" id="floors">
@@ -424,6 +431,8 @@
 
   <div class="gpath" id="gpath">
     <div class="gpath-frames" id="gpathFrames"></div>
+    <video class="gpath-video" id="gzoomFwd" muted playsinline preload="auto"></video>
+    <video class="gpath-video" id="gzoomRev" muted playsinline preload="auto"></video>
     <div class="floor-pins" id="gpathPins"></div>
     <div class="header">
       <button class="glass" id="gpathBurger" aria-label="Меню"><img src="assets/icon-burger.svg" alt=""></button>
@@ -813,9 +822,10 @@
   // (от cover до maxZoom × cover), двойной тап — приблизить/вернуть. Кнопки внутри root жестов не ловят.
   // Меньше cover отдалять нельзя (решение пользователя 2026-10-21): на телефоне верх и низ картинки упираются в верх и
   // низ экрана — кадры шире экрана, так что cover = по высоте; пустых полей вокруг картинки не бывает.
-  // render(v) получает масштаб v.s и сдвиг v.x, v.y картинки iw×ih в px экрана дизайна.
+  // render(v) получает масштаб v.s и сдвиг v.x, v.y картинки iw×ih в px экрана дизайна. zoomIn(v) — перед приближением:
+  // true — экран сам обработал жест (кадр K сада запускает видео в отрезок), картинка не приближается.
   const toDesign = e => { const r = screen.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale }; };
-  function panZoom(root, maxZoom, render) {
+  function panZoom(root, maxZoom, render, zoomIn) {
     const v = { s: 1, x: 0, y: 0, min: 1, cover: 1, iw: 0, ih: 0 };
     function apply() {
       v.s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s));
@@ -826,6 +836,7 @@
       render(v);
     }
     function zoom(k, cx, cy) {   // приблизить в k раз вокруг точки (cx, cy) экрана дизайна
+      if (k > 1 && zoomIn?.(v)) return;
       const s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s * k));
       v.x = cx - (cx - v.x) * s / v.s; v.y = cy - (cy - v.y) * s / v.s; v.s = s;
       apply();
@@ -957,8 +968,7 @@
       const [u, w] = el._pixel, [px, py] = el._pivot;
       el.style.transform = `translate(${v.x + u * v.s}px, ${v.y + w * v.s}px) translate(${-px * 100}%, ${-py * 100}%)`;
     }
-    maybeEnterPath(v);   // кадр K: приближение дальше PATH_ENTER_ZOOM — в отрезок 1–2
-  });
+  }, v => enterPath(v));   // кадр K: любое приближение — сразу видео в отрезок 1–2
   const shotData = {};
   let floorCur = null, fittedSet = null;
   function loadShots(set) {   // camera.json и все кадры набора — сразу, чтобы переключение было мгновенным
@@ -1042,9 +1052,9 @@
   const openGarden = () => openFloors(GARDEN_SHOT, 'garden');
   floorTabs.forEach(b => b.onclick = () => { if (b.dataset.floor !== floorCur) showFloor(b.dataset.floor); });
   document.querySelector('.place.lobby').onclick = () => flyToLobby();
-  document.querySelector('.place.garden').onclick = openGarden;
+  document.querySelector('.place.garden').onclick = () => flyToGarden();
   document.getElementById('menuFloors').addEventListener('click', () => flyToLobby());
-  document.getElementById('menuGarden').addEventListener('click', openGarden);
+  document.getElementById('menuGarden').addEventListener('click', () => flyToGarden());
   if (qs.has('garden')) openGarden();
   document.getElementById('floorsBurger').onclick = () => menu.classList.add('open');
   document.getElementById('floorsClose').onclick = () => flyBack();
@@ -1052,21 +1062,68 @@
   if (qs.has('floor')) openFloors(qs.get('floor'));
 
   // --- Сад: отрезок 1–2 по сплайну камеры двора (ue/garden_path.py, data/garden/path.json, Docs/RENDER.md раздел 6) ---
-  // Из кадра K приближение (колесо, щипок, двойной тап) дальше PATH_ENTER_ZOOM от старта открывает отрезок на середине
-  // (кадр 30). Видео K → середина ещё нет — пока наплыв. Свайп по горизонтали листает кадры 0…60 (как облёт: картинка
+  // В кадре K приближения картинки нет (решение пользователя 2026-10-22): любой жест приближения (колесо, щипок, двойной
+  // тап) сразу открывает отрезок на середине (кадр 30) видео B renders/Flight/GardenZoom[_LQ]/garden_zoom.mp4
+  // (ue/garden_zoom.py): первый кадр видео = K, стоит там же, где K на экране, за время видео раскладка плавно доходит
+  // до cover; последний кадр = кадр 30. Обратно — garden_zoom_rev.mp4, в конце K на весь экран. Видео нет — наплыв. ?gzoom=<набор> — свой. Свайп по горизонтали листает кадры 0…60 (как облёт: картинка
   // догоняет палец, всегда чистый кадр). Отдаление (колесо, щипок) или крестик — прокрутка к середине и наплыв в K.
   // Набор Path (4K), если его нет — Path_LQ; ?path=<набор> — свой; ?gpath — сразу открыть отрезок.
   const PATH_DIR = 'renders/Garden/';
   const PATH_SETS = qs.has('path') ? [qs.get('path')] : ['Path', 'Path_LQ'];
   const PATH_MASTER = { w: 3840, h: 2160 };   // кадр отрезка, px (projection в path.json — в этих пикселях)
   const PATH_PX_PER_FRAME = 8;                // px дизайна свайпа на кадр: весь отрезок (60 кадров) — 480 px
-  const PATH_ENTER_ZOOM = 1.6;                // во сколько раз ближе старта K — переход в отрезок
   const PATH_FADE_MS = 250;                   // = transition .gpath
   const PATH_BACK_MS_PER_FRAME = 12;          // прокрутка к середине перед выходом
   const gpathEl = document.getElementById('gpath');
   const gpathFrames = document.getElementById('gpathFrames');
   const gpathPins = document.getElementById('gpathPins');
   const gp = { data: null, set: null, imgs: [], ready: null, pos: 0, target: 0, shown: -1, busy: false };
+  const GZOOM = { sets: qs.has('gzoom') ? [qs.get('gzoom')] : ['GardenZoom', 'GardenZoom_LQ'], set: 0, ok: true,
+                  fwd: document.getElementById('gzoomFwd'), rev: document.getElementById('gzoomRev') };
+  {
+    const src = () => {
+      GZOOM.fwd.src = `renders/Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom.mp4`;
+      GZOOM.rev.src = `renders/Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom_rev.mp4`;
+    };
+    GZOOM.fwd.onerror = () => { if (++GZOOM.set < GZOOM.sets.length) src(); else GZOOM.ok = false; };
+    src();
+  }
+  // Раскладка 16:9-кадра {s, x, y}: s — px дизайна на px кадра 3840, x/y — левый верхний угол. Видео — на её место.
+  function placeZoom(v, l) {
+    const w = v.videoWidth || PATH_MASTER.w, h = v.videoHeight || PATH_MASTER.h, k = l.s * PATH_MASTER.w / w;
+    v.style.width = `${w}px`; v.style.height = `${h}px`;
+    v.style.transform = `translate(${l.x}px, ${l.y}px) scale(${k})`;
+  }
+  // Проиграть видео B (v), раскладка — от a к b по кривой камеры. false — видео нет / не заиграло.
+  // Кадр видео готов к показу: перемотка (currentTime) сбрасывает readyState, а loadeddata второй раз не приходит —
+  // ждём seeked / canplay.
+  async function videoReady(v, ms = 3000) {
+    const t0 = performance.now();
+    while ((v.readyState < 2 || v.seeking) && performance.now() - t0 < ms)
+      await new Promise(ok => { for (const e of ['seeked', 'canplay', 'loadeddata']) v.addEventListener(e, ok, { once: true }); setTimeout(ok, 100); });
+    return v.readyState >= 2;
+  }
+  async function playZoom(v, a, b) {
+    if (!GZOOM.ok) return false;
+    if (v.currentTime !== 0) v.currentTime = 0;
+    if (!(await videoReady(v))) return false;
+    placeZoom(v, a);
+    for (const x of [GZOOM.fwd, GZOOM.rev]) x.classList.toggle('on', x === v);
+    gpathEl.classList.add('zooming');
+    await nextFrame();
+    try { await v.play(); } catch (e) { console.warn('garden zoom:', e); return false; }
+    while (!v.ended && !v.paused) {
+      const t = easeIO(v.duration > 1 / 30 ? Math.min(1, v.currentTime / (v.duration - 1 / 30)) : 1);
+      placeZoom(v, { s: a.s + (b.s - a.s) * t, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      await nextFrame();
+    }
+    placeZoom(v, b);
+    return true;
+  }
+  function zoomDone() {
+    gpathEl.classList.remove('zooming');
+    for (const x of [GZOOM.fwd, GZOOM.rev]) x.classList.remove('on');
+  }
   function pathLoad(src) {
     return new Promise(ok => { const img = new Image(); img.onload = () => ok(img); img.onerror = () => ok(null); img.src = src; });
   }
@@ -1131,18 +1188,38 @@
     }
     requestAnimationFrame(pathTick);
   })(performance.now());
-  async function openPath() {
+  async function openPath(kView) {   // kView — вид K на экране {s, x, y} (px дизайна на px кадра K)
     if (gp.busy || !(await preparePath())) return;
     gp.busy = true;
-    gp.pos = gp.target = gp.data.path.middleFrame;
-    pathShow(gp.pos);
-    gpathEl.classList.add('open');
-    await new Promise(r => setTimeout(r, PATH_FADE_MS));
-    gp.busy = false;
+    try {
+      gp.pos = gp.target = gp.data.path.middleFrame;
+      pathShow(gp.pos);
+      if (kView && GZOOM.ok && GZOOM.fwd.readyState >= 2) {
+        // Видео B: первый кадр = K в том же виде, что на экране, — слой открывается сразу, без наплыва.
+        placeZoom(GZOOM.fwd, kView);
+        GZOOM.fwd.currentTime = 0;
+        for (const x of [GZOOM.fwd, GZOOM.rev]) x.classList.toggle('on', x === GZOOM.fwd);
+        gpathEl.classList.add('zooming', 'snap', 'open');
+        await nextFrame();
+        gpathEl.classList.remove('snap');
+        await playZoom(GZOOM.fwd, kView, pathLayout());
+        zoomDone();
+      } else {
+        gpathEl.classList.add('open');
+        await new Promise(r => setTimeout(r, PATH_FADE_MS));
+      }
+    } finally {
+      gp.busy = false;
+    }
   }
-  function maybeEnterPath(v) {
-    if (!floors.classList.contains('garden') || gp.busy || gpathEl.classList.contains('open') || !gp.set) return;
-    if (v.s >= v.min * PATH_ENTER_ZOOM) openPath();
+  function enterPath(v) {   // true — жест приближения забран (сад и отрезок есть), иначе обычное приближение
+    if (!floors.classList.contains('garden') || !gp.set) return false;
+    if (!gp.busy && !gpathEl.classList.contains('open'))
+      openPath({ s: v.s * (floorShotWidth() || PATH_MASTER.w) / PATH_MASTER.w, x: v.x, y: v.y });
+    return true;
+  }
+  function floorShotWidth() {   // ширина картинки K в px (по ней считает panZoom)
+    return [...floorShots.children].find(i => i.classList.contains('on'))?.naturalWidth;
   }
   async function closePath() {   // к середине, потом наплыв в K (вид K — снова на весь экран)
     if (gp.busy) return;
@@ -1154,10 +1231,24 @@
       gp.pos = gp.target = from + (mid - from) * a;
       if (a < 1) requestAnimationFrame(step); else ok();
     })(t0));
-    fittedSet = null; showFloor(GARDEN_SHOT, 'garden');
-    gpathEl.classList.remove('open');
-    await new Promise(r => setTimeout(r, PATH_FADE_MS));
-    gp.busy = false;
+    try {
+      const L = pathLayout();
+      const played = await playZoom(GZOOM.rev, L, L);   // видео B назад: середина → K (на весь экран)
+      fittedSet = null; showFloor(GARDEN_SHOT, 'garden');
+      if (played) {   // последний кадр видео = K на весь экран: слой убирается сразу
+        await new Promise(r => setTimeout(r, 120));   // K успевает встать под видео
+        gpathEl.classList.add('snap');
+        gpathEl.classList.remove('open');
+        await nextFrame();
+        gpathEl.classList.remove('snap');
+      } else {
+        gpathEl.classList.remove('open');
+        await new Promise(r => setTimeout(r, PATH_FADE_MS));
+      }
+    } finally {
+      zoomDone();
+      gp.busy = false;
+    }
   }
   // Жесты отрезка: один палец — по кадрам; щипок внутрь или колесо от себя — назад в K.
   {
@@ -1226,33 +1317,43 @@
   document.getElementById('apts').addEventListener('click', () => setMap(false));   // режим «квартиры» — на облёте
   if (qs.has('map')) setMap(true);
 
-  // --- Пролёт облёт → лобби (видео; ue/flight_render.py, tools/flight_video.py, Docs/RENDER.md, раздел 5) ---
-  // Иконка ЛОББИ / пункт меню: облёт докручивается до кадра пролёта (orbitFrame из data/flight/lobby.json), поверх
-  // встаёт видео renders/Flight/<набор>/lobby.mp4, в конце наплывает экран этажей (F1). Крестик этажей — lobby_rev.mp4
+  // --- Пролёты с облёта: → лобби (ue/flight_render.py, Docs/RENDER.md раздел 5) и → сад, кадр K (ue/garden_flight.py,
+  // раздел 6); видео — tools/flight_video.py ---
+  // Иконка ЛОББИ / САД и пункты меню: облёт докручивается до кадра пролёта (orbitFrame из data/flight/<имя>.json), поверх
+  // встаёт видео renders/Flight/<набор>/<имя>.mp4, в конце наплывает экран этажей (F1) или сада (K). Крестик — <имя>_rev.mp4
   // (те же кадры задом наперёд) и снова облёт в том же угле.
-  // Видео 4:3, объектив тот же, что у облёта и F1 (горизонтальный угол один): первый кадр = кадр облёта, последний =
-  // floor_F1 плюс полосы сверху и снизу. Во время проигрывания масштаб плавно идёт от раскладки облёта (cover 4:3)
-  // к раскладке этажа (cover 16:9 кадра F1, как panZoom.reset) — на телефоне это приближение в 4/3, на ПК почти ничего.
-  // Наборы: Lobby (4K), нет — Lobby_LQ (тест 960×720); ?flight=<набор> — свой. Видео нет — этажи открываются без пролёта.
+  // Видео 4:3, объектив тот же, что у облёта и кадра в конце (горизонтальный угол один): первый кадр = кадр облёта,
+  // последний = F1 / K плюс полосы сверху и снизу. Во время проигрывания масштаб плавно идёт от раскладки облёта (cover 4:3)
+  // к раскладке кадра 16:9 (cover, как panZoom.reset) — на телефоне это приближение в 4/3, на ПК почти ничего.
+  // Наборы: 4K (Lobby / Garden), нет — тест 960×720 (*_LQ); ?flight= / ?gflight=<набор> — свой. Видео нет — экран
+  // открывается без пролёта. В пролёте в сад меняется и время суток (9:00 облёта → 13.85 сада).
   const FLIGHT_DIR = 'renders/Flight/';
-  const FLIGHT_SETS = qs.has('flight') ? [qs.get('flight')] : ['Lobby', 'Lobby_LQ'];
-  const FLIGHT_MASTER = { w: 3840, h: 2880 }, FLOOR_MASTER = { w: 3840, h: 2160 };   // кадр пролёта и кадр этажа, px
+  const FLIGHT_MASTER = { w: 3840, h: 2880 }, FLOOR_MASTER = { w: 3840, h: 2160 };   // кадр пролёта и кадр F1 / K, px
   const FLIGHT_FADE_MS = 250;   // наплыв экрана этажей (transition .floors)
   const flightEl = document.getElementById('flight');
-  const fwd = document.getElementById('flightFwd'), rev = document.getElementById('flightRev');
-  let flightAngle = 154 * 2, flightSet = 0, flightOk = true, flying = false;
-  fetch('data/flight/lobby.json').then(r => r.json())
-    .then(d => { flightAngle = d.flight.from.orbitFrame * 2; })   // облёт — через 2° (data/orbit_main/camera.json)
-    .catch(() => {});
-  function flightSrc() {
-    fwd.src = `${FLIGHT_DIR}${FLIGHT_SETS[flightSet]}/lobby.mp4`;
-    rev.src = `${FLIGHT_DIR}${FLIGHT_SETS[flightSet]}/lobby_rev.mp4`;
-  }
-  fwd.onerror = () => {
-    if (++flightSet < FLIGHT_SETS.length) flightSrc();
-    else { flightOk = false; console.warn('flight: нет видео пролёта — этажи открываются без него'); }
+  const flightVideos = [...flightEl.querySelectorAll('video')];
+  const FLIGHTS = {
+    lobby: { name: 'lobby', sets: qs.has('flight') ? [qs.get('flight')] : ['Lobby', 'Lobby_LQ'], angle: 154 * 2,
+             fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
+    garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
+              fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
   };
-  flightSrc();
+  let flying = false;
+  for (const f of Object.values(FLIGHTS)) {
+    f.set = 0; f.ok = true;
+    fetch(`data/flight/${f.name}.json`).then(r => r.json())
+      .then(d => { f.angle = d.flight.from.orbitFrame * 2; })   // облёт — через 2° (data/orbit_main/camera.json)
+      .catch(() => {});
+    const src = () => {
+      f.fwd.src = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}.mp4`;
+      f.rev.src = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}_rev.mp4`;
+    };
+    f.fwd.onerror = () => {
+      if (++f.set < f.sets.length) src();
+      else { f.ok = false; console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`); }
+    };
+    src();
+  }
   const easeIO = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;   // как у камеры приложения (степень 2)
   const orbitScale = () => Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // px дизайна на px мастер-кадра
   const floorScale = () => Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);
@@ -1282,7 +1383,7 @@
     if (v.readyState < 2) await new Promise(ok => { v.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
     v.currentTime = 0;
     placeVideo(v, s0);
-    for (const x of [fwd, rev]) x.classList.toggle('on', x === v);
+    for (const x of flightVideos) x.classList.toggle('on', x === v);
     flightEl.classList.add('on');
     await nextFrame();
     try { await v.play(); } catch (e) { console.warn('flight:', e); return false; }
@@ -1295,47 +1396,57 @@
     placeVideo(v, s1);
     return true;
   }
-  async function flyToLobby() {
+  function flightDone() {
+    flightEl.classList.remove('on');
+    for (const x of flightVideos) x.classList.remove('on');
+    flying = false;
+  }
+  // Пролёт f с общего вида; open() открывает экран в конце (или сразу, если видео нет / уже на экране этажей или сада).
+  async function flyTo(f, open) {
     if (flying) return;
     menu.classList.remove('open');
-    if (!flightOk || floors.classList.contains('open') || !fwd.getAttribute('src')) { openFloors(); return; }
+    if (!f.ok || floors.classList.contains('open') || !f.fwd.getAttribute('src')) { open(); return; }
     flying = true;
     try {
       // Пролёт — с общего вида: снять выбор квартиры (вид вернётся к BASE_VIEW), закрыть карту.
       screen.dispatchEvent(new Event('apartmentclear'));
       setMap(false);
-      loadShots('floors');   // кадры этажей грузятся, пока летим
       await waitFor(() => !tween, 1000);
-      await rotateTo(flightAngle);
-      await waitFor(() => shown === flightAngle, 3000);
-      const ok = await playFlight(fwd, orbitScale(), floorScale());
-      fittedSet = null;      // этаж — с вида на весь экран, как последний кадр видео
-      openFloors('F1');
+      await rotateTo(f.angle);
+      await waitFor(() => shown === f.angle, 3000);
+      const ok = await playFlight(f.fwd, orbitScale(), floorScale());
+      fittedSet = null;      // кадр — с вида на весь экран, как последний кадр видео
+      open();
       if (ok) await new Promise(r => setTimeout(r, FLIGHT_FADE_MS + 50));
     } finally {
-      flightEl.classList.remove('on');
-      for (const x of [fwd, rev]) x.classList.remove('on');
-      flying = false;
+      flightDone();
     }
+  }
+  function flyToLobby() {
+    loadShots('floors');   // кадры этажей грузятся, пока летим
+    return flyTo(FLIGHTS.lobby, () => openFloors('F1'));
+  }
+  function flyToGarden() {
+    loadShots('garden'); preparePath();   // кадр K и отрезок 1–2 грузятся, пока летим
+    return flyTo(FLIGHTS.garden, openGarden);
   }
   async function flyBack() {
     if (flying) return;
-    if (!flightOk || floors.classList.contains('garden') || !rev.getAttribute('src')) { floors.classList.remove('open'); return; }
+    const f = floors.classList.contains('garden') ? FLIGHTS.garden : FLIGHTS.lobby;
+    if (!f.ok || !f.rev.getAttribute('src')) { floors.classList.remove('open'); return; }
     flying = true;
     try {
-      angle = target = flightAngle; draw();   // под видео — облёт в угле пролёта
-      if (rev.readyState < 2) await new Promise(ok => { rev.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
-      rev.currentTime = 0;
-      placeVideo(rev, floorScale());
-      for (const x of [fwd, rev]) x.classList.toggle('on', x === rev);
+      angle = target = f.angle; draw();   // под видео — облёт в угле пролёта
+      if (f.rev.readyState < 2) await new Promise(ok => { f.rev.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
+      f.rev.currentTime = 0;
+      placeVideo(f.rev, floorScale());
+      for (const x of flightVideos) x.classList.toggle('on', x === f.rev);
       flightEl.classList.add('on');
-      floors.classList.remove('open');                       // экран этажей тает над первым кадром видео
+      floors.classList.remove('open');                       // экран тает над первым кадром видео
       await new Promise(r => setTimeout(r, FLIGHT_FADE_MS));
-      await playFlight(rev, floorScale(), orbitScale());
+      await playFlight(f.rev, floorScale(), orbitScale());
     } finally {
-      flightEl.classList.remove('on');
-      for (const x of [fwd, rev]) x.classList.remove('on');
-      flying = false;
+      flightDone();
     }
   }
 
