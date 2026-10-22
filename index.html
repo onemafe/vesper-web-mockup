@@ -143,7 +143,7 @@
   .apt-card .floor { position: absolute; left: 159px; top: 200px; }
   .apt-card .heart { position: absolute; left: 293px; top: 200px; width: 29px; height: 29px; }
   .apt-buttons { position: absolute; left: 20px; top: 243px; display: flex; gap: 14px; }
-  /* ВИДЫ / ПЛАН / ГАЛЕРЕЯ — пока без действий. */
+  /* ВИДЫ — вид из окна (pano.js openViews), ПЛАН — 3D-план, ГАЛЕРЕЯ — пока без действий. */
   .apt-buttons span {
     height: 30px; border-radius: 5px; background: #104b37;
     display: flex; align-items: center; justify-content: center;
@@ -165,6 +165,11 @@
                      color: #b9d2c2; font-size: 14px; pointer-events: none; }
   .apt-buttons .plan-btn { cursor: pointer; }
 
+  /* Пролёт облёт → лобби: видео поверх всего, под экраном этажей (тот наплывает в конце). Ввод на время пролёта блокируется. */
+  .flight { position: absolute; inset: 0; background: #000; overflow: hidden; visibility: hidden; touch-action: none; }
+  .flight.on { visibility: visible; }
+  .flight video { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; visibility: hidden; }
+  .flight.on video.on { visibility: visible; }   /* только при .flight.on: видимый потомок иначе виден и в скрытом слое */
   /* Этажи: лобби, паркинг −1, −2 (фреймы 925:9472, 925:9536, 925:9596). Кадры renders/Floors_Test/ сняты одной камерой —
      переключение этажа меняет картинку, панорама/масштаб остаются. Кнопки на кадре стоят по якорям UE (см. скрипт). */
   .floors {
@@ -207,11 +212,67 @@
   .pano.open { opacity: 1; visibility: visible; }
   .pano canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   /* Варианты одной панорамы (сравнение съёмки) — как переключатель этажей, в ряд. */
+  /* Переключатель видов точки обзора — как в приложении на ПК (WBP_SwitchLobby / WBP_SwitchCourtYard): внизу по центру
+     ‹ [крестик · ВИД n] ›, стрелки листают точки группы по кругу (pano.js, GROUPS). Точка без группы — только крестик. */
+  .pano-nav {
+    position: absolute; left: 50%; top: calc(775px + var(--db)); transform: translateX(-50%); z-index: 1;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .pano-arrow { width: 45px; height: 45px; }
+  .pano-arrow img { display: block; width: 45px; height: 45px; }
+  .pano-arrow.next img { transform: scaleX(-1); }
+  .pano-view { height: 45px; display: flex; align-items: center; gap: 14px; padding: 2px 18px 2px 2px; background-color: rgba(38, 87, 70, 0.8); }
+  .pano-close { width: 41px; height: 41px; background-color: rgba(64, 145, 117, 0.5); }
+  .pano-close img { display: block; width: 12.6px; height: 12.6px; margin: auto; }
+  .pano-view span { color: #57967a; font-size: 16px; font-weight: 500; letter-spacing: 0.8px; line-height: 1; white-space: nowrap; }
+  .pano-nav.single .pano-arrow, .pano-nav.single .pano-view span { display: none; }
+  .pano-nav.single .pano-view { padding: 0; background: none; box-shadow: none; }
+  .pano-nav.single .pano-view::before { display: none; }
+  .pano-nav.single .pano-close { width: 45px; height: 45px; background-color: rgba(38, 87, 70, 0.7); }
   .pano-variants { position: absolute; left: 24px; top: 60px; display: flex; gap: 8px; z-index: 1; }
   .pano-variants button { height: 45px; padding: 0 18px; border-radius: 12px; font-size: 16px; }
   .pano-variants button.on { background-color: rgba(185, 210, 194, 0.5); color: #fff; cursor: default; }
   .pano .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                    color: #b9d2c2; font-size: 14px; pointer-events: none; }
+
+  /* Вид из окна квартиры (pano.js, openViews) — панель как в приложении UE: WBP_WindowView, размеры в единицах UMG.
+     Карточка 394×185 (блюр 10, скругление 10, отступы 33/25/25/25): мини-план T_ViewLocation 179×133.5 с локатором
+     T_ViewLocator 18.5×62, справа через 27 — номер (CeraPro Medium 11.25 pt → 15 px) и строки (Regular 10.5 pt → 14 px).
+     Точки-индикаторы — 20 над карточкой, 10×10 через 10; стрелки 50×50 — в 218 от центра карточки по бокам;
+     крестик 50×50 — на 103 ниже центра. Масштаб панели — как на скриншоте приложения (карточка ≈ 0.83 ширины
+     телефона): стрелки на телефоне частично за краем экрана, как в приложении. Центр карточки — 680 макета, крестик
+     приходится на ряд кнопок макета (925:9836). */
+  .pano.views .pano-nav, .pano.views .pano-variants { display: none; }
+  .wv { display: none; }
+  .pano.views .wv {
+    display: block; position: absolute; left: 50%; top: calc(680px + var(--db)); width: 394px; height: 185px; z-index: 1;
+    transform: translate(-50%, -50%) scale(0.9); color: #fff; text-transform: uppercase;
+  }
+  .wv-card {
+    position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
+    background: linear-gradient(105deg, rgba(42, 86, 74, 0.82), rgba(24, 66, 58, 0.82));
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .wv-plan { position: absolute; left: 33px; top: 25px; width: 179px; height: 133.5px; }
+  .wv-plan > img { display: block; width: 100%; height: 100%; }
+  /* Локатор: левый край по центру — в центре плана + координаты точки (pano.js placeLocator), поворот вокруг него. */
+  .wv-plan .loc { position: absolute; left: 50%; top: 50%; width: 18.5px; height: 62px; transform-origin: 0 50%; }
+  .wv-info { position: absolute; left: 239px; top: 27px; right: 10px; white-space: nowrap; }
+  .wv-info b { display: block; font-weight: 500; font-size: 15px; line-height: 18px; letter-spacing: 0.5px; }
+  .wv-info .rows { margin-top: 26px; font-size: 14px; line-height: 17.5px; }
+  .wv-dots { position: absolute; left: 50%; top: -25px; transform: translateX(-50%); display: flex; gap: 10px; }
+  .wv-dots i { display: block; width: 10px; height: 10px; border-radius: 5px; background: rgba(37, 86, 69, 0.8); }
+  .wv-dots i.on { background: #b6d5b9; }
+  .wv-btn {
+    position: absolute; width: 50px; height: 50px; border: 0; padding: 0; border-radius: 25px; cursor: pointer;
+    background: rgba(40, 82, 70, 0.75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wv-btn svg { width: 22px; height: 22px; fill: none; stroke: #b6d5b9; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .wv-btn:active { background: rgba(40, 82, 70, 0.5); }
+  .wv-btn.prev { left: calc(50% - 268px); top: 67.5px; }
+  .wv-btn.next { left: calc(50% + 218px); top: 67.5px; }
+  .wv-btn.close { left: calc(50% - 25px); top: 195.5px; }
 
   /* Адресная строка Safari внизу (925:8821) — часть макета, видна на всех экранах (поверх меню), без действий. */
   #screen.phone .safari, #screen.wide .safari { display: none; }
@@ -306,7 +367,7 @@
       <div class="floor" id="aptFloor"></div>
       <img class="heart" src="assets/icon-heart-outline.svg" alt="">
       <div class="apt-buttons">
-        <span style="width: 77px">Виды</span>
+        <span style="width: 77px" class="plan-btn" id="aptViewsBtn" role="button">Виды</span>
         <span style="width: 100px" class="plan-btn" id="aptPlanBtn" role="button">План</span>
         <span style="width: 97px">Галерея</span>
       </div>
@@ -323,6 +384,11 @@
       </button>
       <div class="spacer"></div>
     </div>
+  </div>
+
+  <div class="flight" id="flight">
+    <video id="flightFwd" muted playsinline preload="auto"></video>
+    <video id="flightRev" muted playsinline preload="auto"></video>
   </div>
 
   <div class="floors" id="floors">
@@ -346,7 +412,27 @@
     <canvas id="panoCanvas"></canvas>
     <div class="loading" id="panoLoading">Загрузка…</div>
     <div class="pano-variants" id="panoVariants"></div>
-    <button class="floors-close lg" id="panoClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+    <div class="pano-nav" id="panoNav">
+      <button class="lg pano-arrow" id="panoPrev" aria-label="Предыдущий вид"><img src="assets/icon-arrow.svg" alt=""></button>
+      <div class="lg pano-view">
+        <button class="lg pano-close" id="panoClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+        <span id="panoViewName"></span>
+      </div>
+      <button class="lg pano-arrow next" id="panoNext" aria-label="Следующий вид"><img src="assets/icon-arrow.svg" alt=""></button>
+    </div>
+    <div class="wv" id="wvPanel">
+      <div class="wv-card">
+        <div class="wv-plan">
+          <img src="assets/ue/view-location.png" alt="">
+          <img class="loc" id="wvLocator" src="assets/ue/view-locator.png" alt="">
+        </div>
+        <div class="wv-info"><b id="wvId"></b><div class="rows" id="wvRows"></div></div>
+      </div>
+      <div class="wv-dots" id="wvDots"></div>
+      <button class="wv-btn prev" id="wvPrev" aria-label="Предыдущий вид"><svg viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></svg></button>
+      <button class="wv-btn next" id="wvNext" aria-label="Следующий вид"><svg viewBox="0 0 24 24"><path d="M9 4l8 8-8 8"/></svg></button>
+      <button class="wv-btn close" id="wvClose" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    </div>
   </div>
 
   <div class="menu" id="menu">
@@ -691,6 +777,8 @@
     document.getElementById('aptFloor').innerHTML = `${floor} этаж` + (a && a.price ? `<br>${fmt(a.price / 1e6, 1)} млн` : '');
   }
   aptPlan.onerror = () => aptPlan.removeAttribute('src');   // плана нет — белая подложка
+  // ВИДЫ — вид из окна квартиры, как кнопка «ВИД» приложения (pano.js; данные data/views/camera.json).
+  document.getElementById('aptViewsBtn').onclick = () => { if (aptShown) window.pano?.openViews(aptShown); };
   screen.addEventListener('apartmentselect', e => showApartment(e.detail.id));
   // Закрыть = снять выбор квартиры (overlay.js пришлёт apartmentselect с id = null).
   document.getElementById('aptClose').onclick = () => screen.dispatchEvent(new Event('apartmentclear'));
@@ -907,13 +995,13 @@
   }
   const openGarden = () => openFloors('G', 'garden');
   floorTabs.forEach(b => b.onclick = () => { if (b.dataset.floor !== floorCur) showFloor(b.dataset.floor); });
-  document.querySelector('.place.lobby').onclick = () => openFloors();
+  document.querySelector('.place.lobby').onclick = () => flyToLobby();
   document.querySelector('.place.garden').onclick = openGarden;
-  document.getElementById('menuFloors').addEventListener('click', () => openFloors());
+  document.getElementById('menuFloors').addEventListener('click', () => flyToLobby());
   document.getElementById('menuGarden').addEventListener('click', openGarden);
   if (qs.has('garden')) openGarden();
   document.getElementById('floorsBurger').onclick = () => menu.classList.add('open');
-  document.getElementById('floorsClose').onclick = () => floors.classList.remove('open');
+  document.getElementById('floorsClose').onclick = () => flyBack();
   document.getElementById('menuOverview').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); setMap(false); });
   if (qs.has('floor')) openFloors(qs.get('floor'));
 
@@ -949,6 +1037,118 @@
   document.getElementById('menuMap').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); setMap(true); });
   document.getElementById('apts').addEventListener('click', () => setMap(false));   // режим «квартиры» — на облёте
   if (qs.has('map')) setMap(true);
+
+  // --- Пролёт облёт → лобби (видео; ue/flight_render.py, tools/flight_video.py, Docs/RENDER.md, раздел 5) ---
+  // Иконка ЛОББИ / пункт меню: облёт докручивается до кадра пролёта (orbitFrame из data/flight/lobby.json), поверх
+  // встаёт видео renders/Flight/<набор>/lobby.mp4, в конце наплывает экран этажей (F1). Крестик этажей — lobby_rev.mp4
+  // (те же кадры задом наперёд) и снова облёт в том же угле.
+  // Видео 4:3, объектив тот же, что у облёта и F1 (горизонтальный угол один): первый кадр = кадр облёта, последний =
+  // floor_F1 плюс полосы сверху и снизу. Во время проигрывания масштаб плавно идёт от раскладки облёта (cover 4:3)
+  // к раскладке этажа (cover 16:9 кадра F1, как panZoom.reset) — на телефоне это приближение в 4/3, на ПК почти ничего.
+  // Наборы: Lobby (4K), нет — Lobby_LQ (тест 960×720); ?flight=<набор> — свой. Видео нет — этажи открываются без пролёта.
+  const FLIGHT_DIR = 'renders/Flight/';
+  const FLIGHT_SETS = qs.has('flight') ? [qs.get('flight')] : ['Lobby', 'Lobby_LQ'];
+  const FLIGHT_MASTER = { w: 3840, h: 2880 }, FLOOR_MASTER = { w: 3840, h: 2160 };   // кадр пролёта и кадр этажа, px
+  const FLIGHT_FADE_MS = 250;   // наплыв экрана этажей (transition .floors)
+  const flightEl = document.getElementById('flight');
+  const fwd = document.getElementById('flightFwd'), rev = document.getElementById('flightRev');
+  let flightAngle = 154 * 2, flightSet = 0, flightOk = true, flying = false;
+  fetch('data/flight/lobby.json').then(r => r.json())
+    .then(d => { flightAngle = d.flight.from.orbitFrame * 2; })   // облёт — через 2° (data/orbit_main/camera.json)
+    .catch(() => {});
+  function flightSrc() {
+    fwd.src = `${FLIGHT_DIR}${FLIGHT_SETS[flightSet]}/lobby.mp4`;
+    rev.src = `${FLIGHT_DIR}${FLIGHT_SETS[flightSet]}/lobby_rev.mp4`;
+  }
+  fwd.onerror = () => {
+    if (++flightSet < FLIGHT_SETS.length) flightSrc();
+    else { flightOk = false; console.warn('flight: нет видео пролёта — этажи открываются без него'); }
+  };
+  flightSrc();
+  const easeIO = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;   // как у камеры приложения (степень 2)
+  const orbitScale = () => Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // px дизайна на px мастер-кадра
+  const floorScale = () => Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);
+  function placeVideo(v, s) {   // s — масштаб мастер-кадра; видео любого разрешения растягивается до него, по центру
+    const k = s * FLIGHT_MASTER.w / (v.videoWidth || FLIGHT_MASTER.w);
+    const w = (v.videoWidth || FLIGHT_MASTER.w), h = (v.videoHeight || FLIGHT_MASTER.h);
+    v.style.width = `${w}px`; v.style.height = `${h}px`;
+    v.style.transform = `translate(${(W - w * k) / 2}px, ${(H - h * k) / 2}px) scale(${k})`;
+  }
+  const nextFrame = () => new Promise(requestAnimationFrame);
+  function rotateTo(deg) {   // докрутить облёт до угла кратчайшим путём
+    const d = ((deg - angle) % 360 + 540) % 360 - 180;
+    const from = angle, ms = Math.min(1200, 250 + Math.abs(d) * 5), t0 = performance.now();
+    return new Promise(ok => (function step(now) {
+      const t = Math.abs(d) < 0.01 ? 1 : Math.min(1, (now - t0) / ms);
+      angle = target = from + d * easeIO(t);
+      draw();
+      if (t < 1) requestAnimationFrame(step); else ok();
+    })(t0));
+  }
+  async function waitFor(cond, ms) {
+    const t0 = performance.now();
+    while (!cond() && performance.now() - t0 < ms) await nextFrame();
+  }
+  // Проиграть видео v, масштаб — от s0 к s1 по кривой камеры.
+  async function playFlight(v, s0, s1) {
+    if (v.readyState < 2) await new Promise(ok => { v.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
+    v.currentTime = 0;
+    placeVideo(v, s0);
+    for (const x of [fwd, rev]) x.classList.toggle('on', x === v);
+    flightEl.classList.add('on');
+    await nextFrame();
+    try { await v.play(); } catch (e) { console.warn('flight:', e); return false; }
+    while (!v.ended && !v.paused) {
+      const t = v.duration ? Math.min(1, v.currentTime / v.duration) : 1;
+      placeVideo(v, s0 + (s1 - s0) * easeIO(t));
+      await nextFrame();
+    }
+    placeVideo(v, s1);
+    return true;
+  }
+  async function flyToLobby() {
+    if (flying) return;
+    menu.classList.remove('open');
+    if (!flightOk || floors.classList.contains('open') || !fwd.getAttribute('src')) { openFloors(); return; }
+    flying = true;
+    try {
+      // Пролёт — с общего вида: снять выбор квартиры (вид вернётся к BASE_VIEW), закрыть карту.
+      screen.dispatchEvent(new Event('apartmentclear'));
+      setMap(false);
+      loadShots('floors');   // кадры этажей грузятся, пока летим
+      await waitFor(() => !tween, 1000);
+      await rotateTo(flightAngle);
+      await waitFor(() => shown === flightAngle, 3000);
+      const ok = await playFlight(fwd, orbitScale(), floorScale());
+      fittedSet = null;      // этаж — с вида на весь экран, как последний кадр видео
+      openFloors('F1');
+      if (ok) await new Promise(r => setTimeout(r, FLIGHT_FADE_MS + 50));
+    } finally {
+      flightEl.classList.remove('on');
+      for (const x of [fwd, rev]) x.classList.remove('on');
+      flying = false;
+    }
+  }
+  async function flyBack() {
+    if (flying) return;
+    if (!flightOk || floors.classList.contains('garden') || !rev.getAttribute('src')) { floors.classList.remove('open'); return; }
+    flying = true;
+    try {
+      angle = target = flightAngle; draw();   // под видео — облёт в угле пролёта
+      if (rev.readyState < 2) await new Promise(ok => { rev.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
+      rev.currentTime = 0;
+      placeVideo(rev, floorScale());
+      for (const x of [fwd, rev]) x.classList.toggle('on', x === rev);
+      flightEl.classList.add('on');
+      floors.classList.remove('open');                       // экран этажей тает над первым кадром видео
+      await new Promise(r => setTimeout(r, FLIGHT_FADE_MS));
+      await playFlight(rev, floorScale(), orbitScale());
+    } finally {
+      flightEl.classList.remove('on');
+      for (const x of [fwd, rev]) x.classList.remove('on');
+      flying = false;
+    }
+  }
 
   addEventListener('resize', fit);
   if (window.visualViewport) visualViewport.addEventListener('resize', fit);
