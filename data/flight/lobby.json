@@ -18,7 +18,8 @@
    14354.667338
   ],
   "orbitCenterActor": "BP_LobbyTopCamera",
-  "note": "path = APlayerCM::SetViewTargetSmartOrbit; frame 0 = orbit pose, last = floor shot pose; lobby state (floors cut, outline) on from frame 0, as in the app"
+  "note": "path = APlayerCM::SetViewTargetSmartOrbit; frame 0 = orbit pose, last = floor shot pose; lobby state (floors cut, outline) on from frame 0, as in the app",
+  "postProcess": "blend orbit -> lobby camera post process, weight = t"
  },
  "camera": {
   "focalLengthMm": 25.0,

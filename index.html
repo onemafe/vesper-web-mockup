@@ -177,8 +177,12 @@
     opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
   }
   .floors.open { opacity: 1; visibility: visible; }
-  .floors .shot { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; visibility: hidden; }
-  .floors .shot.on { visibility: visible; }
+  /* Смена этажа — наплыв: новый кадр поверх старого проявляется по opacity (FLOOR_FADE_MS в скрипте), старый
+     прячется после перехода. .snap — без наплыва (первый показ, смена набора этажи ↔ двор). */
+  .floors .shot { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none;
+                  opacity: 0; transition: opacity .5s; }
+  .floors .shot.on { opacity: 1; }
+  .floors.snap .shot { transition: none; }
   .floors .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                      color: #b9d2c2; font-size: 14px; pointer-events: none; }
   .floors .header { z-index: 1; }
@@ -878,7 +882,7 @@
 
   // --- Этажи: лобби (F1), паркинг −1, −2 (Docs/FLOORS.md) ---
   // Кадры renders/Floors_Test/floor_<id>.webp (4K; в camera.json имена .png из UE — подменяем на .webp) сняты одной камерой и совпадают слой в слой: переключатель меняет
-  // картинку, панорама и масштаб остаются. Кнопки на кадре — якоря UE из data/floors/camera.json (мировая точка →
+  // картинку наплывом по opacity (showShot), панорама и масштаб остаются. Кнопки на кадре — якоря UE из data/floors/camera.json (мировая точка →
   // пиксель кадра; pivot — какая точка кнопки стоит в якоре):
   //   F1  — лупа BP_LobbyViewItem index 5 — переход на −1 («Parking -1  M8»). Остальные лупы приложения открывают
   //         группу камер, а не камеру, — вместо них «360» в точках камер, для которых есть панорама
@@ -963,12 +967,29 @@
     el._pixel = p.a.pixel; el._pivot = p.a.pivot;
     return el;
   }
+  // Показать кадр: наплывом поверх текущего (snap — сразу). Старые кадры прячутся, когда новый проявился полностью.
+  const FLOOR_FADE_MS = 500;   // = transition .floors .shot
+  let fadeTimer = 0;
+  function showShot(img, snap) {
+    clearTimeout(fadeTimer);
+    floors.classList.toggle('snap', snap);
+    img.classList.remove('on');
+    floorShots.appendChild(img);   // последний в DOM — поверх остальных
+    void img.offsetWidth;          // зафиксировать opacity 0, иначе переход не запустится
+    img.classList.add('on');
+    void img.offsetWidth;
+    floors.classList.remove('snap');
+    fadeTimer = setTimeout(() => {
+      for (const x of floorShots.children) if (x !== img) x.classList.remove('on');
+    }, snap ? 0 : FLOOR_FADE_MS);
+  }
   async function showFloor(id, set = 'floors') {
     floorCur = id;
+    const snap = fittedSet !== set;   // другой набор — другая камера: вид сбрасывается, без наплыва
     floors.classList.toggle('garden', set === 'garden');
     floorTabs.forEach(b => b.classList.toggle('on', b.dataset.floor === id));
     floorPins.replaceChildren();
-    for (const img of floorShots.children) img.classList.remove('on');
+    if (snap) for (const img of floorShots.children) img.classList.remove('on');   // внутри набора старый кадр виден, пока грузится новый
     floorsLoading.textContent = 'Загрузка…'; floorsLoading.style.display = '';
     let shot;
     try {
@@ -982,11 +1003,11 @@
     if (floorCur !== id) return;   // пока грузилось, выбрали другой этаж
     if (!shot.img.naturalWidth) { floorsLoading.textContent = `Нет кадра web/${FLOORS_DIR}${shot.file} — запустите sync.cmd`; return; }
     floorsLoading.style.display = 'none';
-    for (const img of floorShots.children) img.classList.toggle('on', img === shot.img);
     floorPins.replaceChildren(...floorPinsFor(shot).map(makePin));
     // Камера у кадров набора одна: на весь экран — только при первом показе набора, дальше панорама и масштаб сохраняются.
-    if (fittedSet !== set) { fittedSet = set; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight); }
+    if (snap) { fittedSet = set; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight); }
     else floorView.redraw();
+    showShot(shot.img, snap);
   }
   function openFloors(id = 'F1', set = 'floors') {
     menu.classList.remove('open');
@@ -1099,7 +1120,8 @@
     await nextFrame();
     try { await v.play(); } catch (e) { console.warn('flight:', e); return false; }
     while (!v.ended && !v.paused) {
-      const t = v.duration ? Math.min(1, v.currentTime / v.duration) : 1;
+      // Последний кадр начинается за кадр до конца видео (30 fps) — к нему масштаб уже конечный.
+      const t = v.duration > 1 / 30 ? Math.min(1, v.currentTime / (v.duration - 1 / 30)) : 1;
       placeVideo(v, s0 + (s1 - s0) * easeIO(t));
       await nextFrame();
     }
