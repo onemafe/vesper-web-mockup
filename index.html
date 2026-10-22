@@ -208,6 +208,16 @@
     position: absolute; left: calc(193px + var(--dx)); top: calc(775px + var(--db)); width: 45px; height: 45px; z-index: 1;
   }
   .floors-close img { display: block; width: 12.6px; height: 12.6px; margin: auto; }
+  /* Сад: отрезок 1–2 по сплайну камеры двора — поверх кадра K (экран двора). Кадры 16:9 на весь экран (cover),
+     свайп по горизонтали листает кадры; видим только текущий. */
+  .gpath {
+    position: absolute; inset: 0; background: #000; overflow: hidden; touch-action: none; cursor: ew-resize;
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .gpath.open { opacity: 1; visibility: visible; }
+  .gpath-frames img { position: absolute; max-width: none; pointer-events: none; visibility: hidden; }
+  .gpath.open .gpath-frames img.on { visibility: visible; }   /* только при .open: видимый потомок иначе виден и в скрытом слое */
+  .gpath .header { z-index: 1; }
   /* Панорама 360 точки обзора (pano.js) — поверх этажей; макета нет, только крестик как у этажей. */
   .pano {
     position: absolute; inset: 0; z-index: 2; background: #000; overflow: hidden; touch-action: none; cursor: grab;   /* выше вкладок и шапки этажей (z-index 1) */
@@ -410,6 +420,17 @@
       <button class="lg" data-floor="P-2">– 2</button>
     </div>
     <button class="floors-close lg" id="floorsClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+  </div>
+
+  <div class="gpath" id="gpath">
+    <div class="gpath-frames" id="gpathFrames"></div>
+    <div class="floor-pins" id="gpathPins"></div>
+    <div class="header">
+      <button class="glass" id="gpathBurger" aria-label="Меню"><img src="assets/icon-burger.svg" alt=""></button>
+      <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
+      <div class="spacer"></div>
+    </div>
+    <button class="floors-close lg" id="gpathClose" aria-label="Назад к саду"><img src="assets/icon-close.svg" alt=""></button>
   </div>
 
   <div class="pano" id="panoView">
@@ -889,12 +910,13 @@
   //         (data/pano/camera.json, мировая точка камеры → пиксель по projection кадра); нажатие открывает pano.js;
   //   P-1 — Widget (PARKING -2) → «Parking -2  M9». Остальные якоря (подписи зон лобби, кладовые) в макете не нарисованы.
   // Открывают: иконка ЛОББИ на общем виде, пункт меню «ЛОББИ И ПАРКОВКА»; ?floor=F1|P-1|P-2 — сразу (для проверки).
-  // Двор — тот же экран без переключателя этажей: кадр renders/Floors_Test/garden_G.webp и data/garden/camera.json
-  // (ue/garden_shots.py, Docs/CAMERAS.md). Открывают иконка САД и пункт меню «САД»; ?garden — сразу. Кнопки — «360» в точках
+  // Двор — тот же экран без переключателя этажей: кадр renders/Floors_Test/garden_K.webp и data/garden/camera.json
+  // (ue/garden_shots.py K, Docs/RENDER.md раздел 6; K заменил G — 2026-10-22, G в camera.json остаётся, но не грузится). Открывают иконка САД и пункт меню «САД»; ?garden — сразу. Кнопки — «360» в точках
   // панорам двора (BP_GardenCamera*), пока их нет — кадр без кнопок. Другая камера, поэтому при переходе двор ↔ этажи
   // вид сбрасывается на весь экран.
   const FLOORS_DIR = 'renders/Floors_Test/';
   const SHOT_SETS = { floors: 'data/floors/camera.json', garden: 'data/garden/camera.json' };
+  const GARDEN_SHOT = 'K';
   const isGardenPano = p => p.id.startsWith('BP_GardenCamera');
   const FLOOR_MAX_ZOOM = 3;
   const floors = document.getElementById('floors');
@@ -911,9 +933,9 @@
       else if (a.class === 'BP_Parking_01' && a.widget === 'Widget')
         pins.push({ a, park: 'Parking -2  M9', go: 'P-2' });
     }
-    if (shot.id === 'F1' || shot.id === 'G')
+    if (shot.id === 'F1' || shot.id === GARDEN_SHOT)
       // Варианты точки (variantOf) — без своей кнопки, переключаются в самой панораме.
-      for (const p of panoPoints.filter(p => !p.variantOf && isGardenPano(p) === (shot.id === 'G'))) {
+      for (const p of panoPoints.filter(p => !p.variantOf && isGardenPano(p) === (shot.id === GARDEN_SHOT))) {
         const px = projectPixel(shot, p.location);
         if (px && px[0] >= 0 && px[0] < shot.image.width && px[1] >= 0 && px[1] < shot.image.height)
           pins.push({ a: { pixel: px, pivot: [0.5, 0.5] }, text: '360', pano: p.id });
@@ -935,11 +957,13 @@
       const [u, w] = el._pixel, [px, py] = el._pivot;
       el.style.transform = `translate(${v.x + u * v.s}px, ${v.y + w * v.s}px) translate(${-px * 100}%, ${-py * 100}%)`;
     }
+    maybeEnterPath(v);   // кадр K: приближение дальше PATH_ENTER_ZOOM — в отрезок 1–2
   });
   const shotData = {};
   let floorCur = null, fittedSet = null;
   function loadShots(set) {   // camera.json и все кадры набора — сразу, чтобы переключение было мгновенным
     return shotData[set] ||= fetch(SHOT_SETS[set]).then(r => r.json()).then(d => {
+      if (set === 'garden') d.shots = d.shots.filter(s => s.id === GARDEN_SHOT);
       for (const shot of d.shots) {
         const img = shot.img = new Image();
         img.className = 'shot'; img.alt = ''; img.draggable = false;
@@ -1011,10 +1035,11 @@
   }
   function openFloors(id = 'F1', set = 'floors') {
     menu.classList.remove('open');
+    document.getElementById('gpath').classList.remove('open');   // отрезок сада поверх — закрыть
     floors.classList.add('open');
     showFloor(id, set);
   }
-  const openGarden = () => openFloors('G', 'garden');
+  const openGarden = () => openFloors(GARDEN_SHOT, 'garden');
   floorTabs.forEach(b => b.onclick = () => { if (b.dataset.floor !== floorCur) showFloor(b.dataset.floor); });
   document.querySelector('.place.lobby').onclick = () => flyToLobby();
   document.querySelector('.place.garden').onclick = openGarden;
@@ -1025,6 +1050,148 @@
   document.getElementById('floorsClose').onclick = () => flyBack();
   document.getElementById('menuOverview').addEventListener('click', () => { menu.classList.remove('open'); floors.classList.remove('open'); setMap(false); });
   if (qs.has('floor')) openFloors(qs.get('floor'));
+
+  // --- Сад: отрезок 1–2 по сплайну камеры двора (ue/garden_path.py, data/garden/path.json, Docs/RENDER.md раздел 6) ---
+  // Из кадра K приближение (колесо, щипок, двойной тап) дальше PATH_ENTER_ZOOM от старта открывает отрезок на середине
+  // (кадр 30). Видео K → середина ещё нет — пока наплыв. Свайп по горизонтали листает кадры 0…60 (как облёт: картинка
+  // догоняет палец, всегда чистый кадр). Отдаление (колесо, щипок) или крестик — прокрутка к середине и наплыв в K.
+  // Набор Path (4K), если его нет — Path_LQ; ?path=<набор> — свой; ?gpath — сразу открыть отрезок.
+  const PATH_DIR = 'renders/Garden/';
+  const PATH_SETS = qs.has('path') ? [qs.get('path')] : ['Path', 'Path_LQ'];
+  const PATH_MASTER = { w: 3840, h: 2160 };   // кадр отрезка, px (projection в path.json — в этих пикселях)
+  const PATH_PX_PER_FRAME = 8;                // px дизайна свайпа на кадр: весь отрезок (60 кадров) — 480 px
+  const PATH_ENTER_ZOOM = 1.6;                // во сколько раз ближе старта K — переход в отрезок
+  const PATH_FADE_MS = 250;                   // = transition .gpath
+  const PATH_BACK_MS_PER_FRAME = 12;          // прокрутка к середине перед выходом
+  const gpathEl = document.getElementById('gpath');
+  const gpathFrames = document.getElementById('gpathFrames');
+  const gpathPins = document.getElementById('gpathPins');
+  const gp = { data: null, set: null, imgs: [], ready: null, pos: 0, target: 0, shown: -1, busy: false };
+  function pathLoad(src) {
+    return new Promise(ok => { const img = new Image(); img.onload = () => ok(img); img.onerror = () => ok(null); img.src = src; });
+  }
+  function preparePath() {   // path.json, набор и все кадры: сначала середина, потом от неё в обе стороны по 4
+    return gp.ready ||= (async () => {
+      try { gp.data = await (await fetch('data/garden/path.json', { cache: 'no-cache' })).json(); } catch { return false; }
+      const n = gp.data.frames.length, mid = gp.data.path.middleFrame;
+      for (const set of PATH_SETS) {
+        const img = await pathLoad(`${PATH_DIR}${set}/path_${pad(mid)}.webp`);
+        if (img) { gp.set = set; gp.imgs[mid] = img; break; }
+      }
+      if (!gp.set) return false;
+      for (let i = 0; i < n; i++) gp.imgs[i] ||= new Image();
+      for (const img of gp.imgs) { img.alt = ''; img.draggable = false; gpathFrames.appendChild(img); }
+      const order = [...Array(n).keys()].filter(i => i !== mid).sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+      let next = 0;
+      const worker = async () => {
+        while (next < order.length) {
+          const i = order[next++], img = gp.imgs[i];
+          await new Promise(ok => { img.onload = img.onerror = ok; img.src = `${PATH_DIR}${gp.set}/path_${pad(i)}.webp`; });
+        }
+      };
+      for (let k = 0; k < 4; k++) worker();
+      return true;
+    })();
+  }
+  function pathLayout() {   // cover: 16:9 на весь экран, по центру
+    const s = Math.max(W / PATH_MASTER.w, H / PATH_MASTER.h);
+    return { s, x: (W - PATH_MASTER.w * s) / 2, y: (H - PATH_MASTER.h * s) / 2 };
+  }
+  function pathShow(i) {   // ближайший загруженный кадр к i
+    const n = gp.imgs.length;
+    let k = -1;
+    for (let d = 0; d < n && k < 0; d++)
+      for (const j of [i - d, i + d]) if (j >= 0 && j < n && gp.imgs[j].complete && gp.imgs[j].naturalWidth) { k = j; break; }
+    if (k < 0) return;
+    const L = pathLayout(), key = `${W}x${H}`;
+    if (gp.layoutKey !== key) {   // размер экрана поменялся — переставить кадры
+      gp.layoutKey = key; gp.shown = -1;
+      for (const img of gp.imgs) Object.assign(img.style, { left: `${L.x}px`, top: `${L.y}px`,
+        width: `${PATH_MASTER.w * L.s}px`, height: `${PATH_MASTER.h * L.s}px` });
+    }
+    if (k === gp.shown) return;
+    for (const img of gp.imgs) img.classList.toggle('on', img === gp.imgs[k]);
+    gp.shown = k;
+    // «360» в точках панорам двора — по projection этого кадра
+    const P = { projection: gp.data.frames[k].projection };
+    gpathPins.replaceChildren(...panoPoints.filter(p => !p.variantOf && isGardenPano(p)).flatMap(p => {
+      const px = projectPixel(P, p.location);
+      if (!px || px[0] < 0 || px[0] >= PATH_MASTER.w || px[1] < 0 || px[1] >= PATH_MASTER.h) return [];
+      const el = makePin({ a: { pixel: px, pivot: [0.5, 0.5] }, text: '360', pano: p.id });
+      el.style.transform = `translate(${L.x + px[0] * L.s}px, ${L.y + px[1] * L.s}px) translate(-50%, -50%)`;
+      return [el];
+    }));
+  }
+  (function pathTick(now) {   // картинка догоняет палец (как облёт, FOLLOW_MS)
+    const dt = now - (pathTick.t || now); pathTick.t = now;
+    if (gpathEl.classList.contains('open') && gp.set) {
+      gp.pos += (gp.target - gp.pos) * (1 - Math.exp(-dt / FOLLOW_MS));
+      if (Math.abs(gp.target - gp.pos) < 0.01) gp.pos = gp.target;
+      pathShow(Math.round(gp.pos));
+    }
+    requestAnimationFrame(pathTick);
+  })(performance.now());
+  async function openPath() {
+    if (gp.busy || !(await preparePath())) return;
+    gp.busy = true;
+    gp.pos = gp.target = gp.data.path.middleFrame;
+    pathShow(gp.pos);
+    gpathEl.classList.add('open');
+    await new Promise(r => setTimeout(r, PATH_FADE_MS));
+    gp.busy = false;
+  }
+  function maybeEnterPath(v) {
+    if (!floors.classList.contains('garden') || gp.busy || gpathEl.classList.contains('open') || !gp.set) return;
+    if (v.s >= v.min * PATH_ENTER_ZOOM) openPath();
+  }
+  async function closePath() {   // к середине, потом наплыв в K (вид K — снова на весь экран)
+    if (gp.busy) return;
+    gp.busy = true;
+    const mid = gp.data.path.middleFrame, from = gp.pos;
+    const ms = Math.abs(from - mid) * PATH_BACK_MS_PER_FRAME, t0 = performance.now();
+    await new Promise(ok => (function step(now) {
+      const a = ms ? Math.min(1, (now - t0) / ms) : 1;
+      gp.pos = gp.target = from + (mid - from) * a;
+      if (a < 1) requestAnimationFrame(step); else ok();
+    })(t0));
+    fittedSet = null; showFloor(GARDEN_SHOT, 'garden');
+    gpathEl.classList.remove('open');
+    await new Promise(r => setTimeout(r, PATH_FADE_MS));
+    gp.busy = false;
+  }
+  // Жесты отрезка: один палец — по кадрам; щипок внутрь или колесо от себя — назад в K.
+  {
+    const ptrs = new Map();
+    let drag = null, pinch0 = 0;
+    gpathEl.addEventListener('pointerdown', e => {
+      if (e.target.closest('button') || gp.busy) return;
+      gpathEl.setPointerCapture(e.pointerId);
+      ptrs.set(e.pointerId, toDesign(e));
+      if (ptrs.size === 1) drag = { x: toDesign(e).x, i: gp.target };
+      else { drag = null; const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); }
+    });
+    gpathEl.addEventListener('pointermove', e => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, toDesign(e));
+      if (drag) {
+        gp.target = Math.min(gp.imgs.length - 1, Math.max(0, drag.i - (toDesign(e).x - drag.x) / PATH_PX_PER_FRAME));
+      } else if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()];
+        if (Math.hypot(a.x - b.x, a.y - b.y) < pinch0 * 0.75) { ptrs.clear(); closePath(); }
+      }
+    });
+    const up = e => { ptrs.delete(e.pointerId); if (!ptrs.size) drag = null; };
+    gpathEl.addEventListener('pointerup', up);
+    gpathEl.addEventListener('pointercancel', up);
+    gpathEl.addEventListener('wheel', e => { e.preventDefault(); if (e.deltaY > 0) closePath(); }, { passive: false });
+  }
+  document.getElementById('gpathClose').onclick = () => closePath();
+  document.getElementById('gpathBurger').onclick = () => menu.classList.add('open');
+  // Отрезок готовим, как только открыт сад: к первому приближению середина уже загружена.
+  document.querySelector('.place.garden').addEventListener('click', preparePath);
+  document.getElementById('menuGarden').addEventListener('click', preparePath);
+  if (qs.has('garden') || qs.has('gpath')) preparePath();
+  if (qs.has('gpath')) { openGarden(); openPath(); }
 
   // --- Карта района (4-я кнопка дока, Figma «1 - Объект - Район», Docs/FLOORS.md «Карта») ---
   // Кадр renders/Floors_Test/map_M.webp — камера карты приложения на самом дальнем зуме (ue/map_shots.py,
