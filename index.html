@@ -1464,7 +1464,7 @@
   const flightLayers = [...document.querySelectorAll('.flight')];   // #flight — над всем, #mapFlight — под шапкой
   const flightVideos = flightLayers.flatMap(l => [...l.querySelectorAll('video')]);
   const FLIGHTS = {
-    lobby: { name: 'lobby', sets: qs.has('flight') ? [qs.get('flight')] : ['Lobby', 'Lobby_LQ'], angle: 154 * 2,
+    lobby: { name: 'lobby', sets: qs.has('flight') ? [qs.get('flight')] : ['Lobby', 'Lobby_LQ'], angle: 155 * 2,
              fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
     garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
               fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
