@@ -7,6 +7,8 @@
 // приложения в момент съёмки (startView.yaw), горизонт ровный.
 // Эквиректангулярная развёртка 2:1 (плагин PanoramicCaptureCustom, ue/pano_plugin.py) — у точки поле equirect
 // (путь от renders/Pano_Test/) и equirectYaw — куда смотрит центр картинки; рисуется сферой из направлений UE.
+// equirectTiles (16K, ue/pano_shots.py 16k) — развёртка плитками: <имя>/tiles.json и <ряд>_<столбец>.webp
+// (tools/compress_renders.py), каждая плитка — свой кусок сферы.
 // Варианты одной точки (сравнение настроек съёмки), defaultVariant основной — какой открыть по кнопке «360»,
 // variantHidden — скрыть вариант из переключателя: точка с variantOf = <id основной> и variantLabel — кнопки
 // вверху переключают грани, направление взгляда сохраняется. Кнопки «360» на этаже — только у основных.
@@ -20,7 +22,9 @@ import * as THREE from 'three';
 
 const DIR = 'renders/Pano_Test/';
 const VIEWS_DIR = 'renders/Views_Test/';
-const FOV_START = 80, FOV_MIN = 35, FOV_MAX = 100;   // вертикальный угол камеры вьюера, °
+// Вертикальный угол камеры вьюера, °. ?fov=N — стартовый угол (проверка резкости при приближении).
+const FOV_MIN = 35, FOV_MAX = 100;
+const FOV_START = Math.max(FOV_MIN, Math.min(FOV_MAX, +new URLSearchParams(location.search).get('fov') || 80));
 const PITCH_LIMIT = 85;
 
 const root = document.getElementById('panoView');
@@ -64,6 +68,18 @@ let data = null;          // camera.json
 let view = { yaw: 0, pitch: 0, fov: FOV_START };
 let openId = null;
 
+// Материал панорамы: текстура с mipmap-сдвигом MIP_BIAS к более детальному уровню. Без него браузер при уменьшении
+// подмешивает более мелкий уровень и картинка мягче, чем позволяет экран (16K выходила как 8K, проверено 2026-10-23).
+const MIP_BIAS = -0.5;
+function panoMaterial(texture) {
+  const m = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+  m.onBeforeCompile = shader => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
+      `diffuseColor *= texture2D(map, vMapUv, ${MIP_BIAS.toFixed(2)});`);
+  };
+  return m;
+}
+
 function faceMesh(rot, texture) {
   const { f, r, u } = basis(rot.pitch, rot.yaw);
   const k = Math.tan(rad(data.image.fovDeg / 2));   // полуширина грани при расстоянии 1 (90° → 1)
@@ -74,22 +90,24 @@ function faceMesh(rot, texture) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pts.flatMap(p => [p.x, p.y, p.z]), 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 0, 0, 1, 0], 2));
   g.setIndex([0, 2, 1, 1, 2, 3]);
-  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }));
+  return new THREE.Mesh(g, panoMaterial(texture));
 }
 
 // Сфера под развёртку: u = 0.5 — yaw центра, u растёт вправо (по часовой сверху, как yaw UE), v = 0 — зенит.
 // crop {yawMin, yawMax, pitchMin, pitchMax} — развёртка только сектора (виды из окон): u по yawMin…yawMax, v по pitchMax…pitchMin.
-function sphereMesh(texture, centerYaw, crop) {
+// part {u0, u1, v0, v1} — текстура — только этот кусок развёртки (плитка), доли от её ширины и высоты, v0 — верх.
+function sphereMesh(texture, centerYaw, crop, part = { u0: 0, u1: 1, v0: 0, v1: 1 }) {
   const span = crop ? crop.yawMax - crop.yawMin : 360;
   const top = crop ? crop.pitchMax : 90, bottom = crop ? crop.pitchMin : -90;
   if (crop) centerYaw = (crop.yawMin + crop.yawMax) / 2;
-  const W = Math.max(8, Math.round(128 * span / 360)), H = 64, pos = [], uv = [], idx = [];
+  const W = Math.max(8, Math.round(128 * span / 360 * (part.u1 - part.u0)));
+  const H = Math.max(8, Math.round(64 * (part.v1 - part.v0))), pos = [], uv = [], idx = [];
   for (let j = 0; j <= H; j++)
     for (let i = 0; i <= W; i++) {
-      const u = i / W, v = j / H;
+      const u = part.u0 + i / W * (part.u1 - part.u0), v = part.v0 + j / H * (part.v1 - part.v0);
       const { f } = basis(top - v * (top - bottom), centerYaw + (u - 0.5) * span);
       const p = ue(...f);
-      pos.push(p.x, p.y, p.z); uv.push(u, 1 - v);
+      pos.push(p.x, p.y, p.z); uv.push(i / W, 1 - j / H);
     }
   for (let j = 0; j < H; j++)
     for (let i = 0; i < W; i++) {
@@ -100,7 +118,45 @@ function sphereMesh(texture, centerYaw, crop) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
-  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }));
+  return new THREE.Mesh(g, panoMaterial(texture));
+}
+
+function loadTexture(url) {
+  return loader.loadAsync(url).then(tex => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return tex;
+  });
+}
+
+// Развёртка точки: одна картинка или плитки (equirectTiles). Меши или null, если не загрузилось.
+async function equirectMeshes(point) {
+  const yaw = point.equirectYaw ?? point.startView.yaw;
+  const base = DIR + point.equirect.replace(/\.png$/i, '');
+  try {
+    if (!point.equirectTiles) return [sphereMesh(await loadTexture(base + '.webp'), yaw)];
+    const t = await fetch(base + '/tiles.json').then(r => r.json());
+    const cells = [];
+    for (let r = 0; r < t.rows; r++)
+      for (let c = 0; c < t.cols; c++) cells.push([r, c]);
+    return await Promise.all(cells.map(([r, c]) => loadTexture(`${base}/${r}_${c}.webp`).then(tex => sphereMesh(tex, yaw, null, {
+      u0: c * t.tile / t.width, u1: Math.min(t.width, (c + 1) * t.tile) / t.width,
+      v0: r * t.tile / t.height, v1: Math.min(t.height, (r + 1) * t.tile) / t.height,
+    }))));
+  } catch (e) {
+    return null;
+  }
+}
+
+// Убрать меши со сцены и выгрузить их текстуры из видеопамяти: 16K — ~700 МБ, без этого телефон падает
+// после пары переключений вариантов.
+function clearMeshes() {
+  for (const m of cube.children) {
+    m.geometry.dispose();
+    m.material.map?.dispose();
+    m.material.dispose();
+  }
+  cube.clear();
 }
 
 function resize() {
@@ -151,7 +207,7 @@ function showVariants(point) {
   const baseId = point.variantOf || point.id;
   // variantHidden — вариант скрыт из переключателя (файлы и запись остаются для истории проб).
   const group = data.points.filter(p => (p.id === baseId || p.variantOf === baseId) && !p.variantHidden)
-    .sort((a, b) => (a.variantLabel || a.id).localeCompare(b.variantLabel || b.id));
+    .sort((a, b) => (a.variantLabel || a.id).localeCompare(b.variantLabel || b.id, undefined, { numeric: true }));   // 6K, 8K, 16K
   variantsBar.replaceChildren(...(group.length < 2 ? [] : group.map(p => {
     const b = document.createElement('button');
     b.className = 'lg';
@@ -169,7 +225,7 @@ async function open(id, keepView = false) {
   root.classList.remove('views');
   root.classList.add('open');
   loading.textContent = 'Загрузка…'; loading.style.display = '';
-  if (!keepView) cube.clear();   // при смене варианта старые грани видны, пока грузятся новые
+  if (!keepView) clearMeshes();   // при смене варианта старые грани видны, пока грузятся новые
   let point;
   try {
     await loadData();
@@ -190,21 +246,17 @@ async function open(id, keepView = false) {
   showVariants(point);
   showNav(point.variantOf || point.id);
   if (!keepView) view = { yaw: point.startView.yaw, pitch: 0, fov: FOV_START };
-  const webp = path => DIR + path.replace(/\.png$/i, '.webp');
   const faces = point.equirect
-    ? [await loader.loadAsync(webp(point.equirect)).then(tex => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        return sphereMesh(tex, point.equirectYaw ?? point.startView.yaw);
-      }).catch(() => null)]
+    ? await equirectMeshes(point) || [null]
     : await Promise.all(Object.entries(data.faces).map(([name, rot]) =>
     loader.loadAsync(DIR + point.faces[name].replace(/\.png$/i, '.webp')).then(tex => {
       tex.colorSpace = THREE.SRGBColorSpace;
       return faceMesh(rot, tex);
     }).catch(() => null)));
-  if (openId !== id) return;   // пока грузилось, закрыли или открыли другую
-  if (faces.includes(null)) { loading.textContent = `Нет граней web/${DIR}${id}/ — запустите sync.cmd`; return; }
-  cube.clear();
+  const drop = () => faces.forEach(m => { if (m) { m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); } });
+  if (openId !== id) { drop(); return; }   // пока грузилось, закрыли или открыли другую
+  if (faces.includes(null)) { drop(); loading.textContent = `Нет панорамы web/${DIR}${point.equirect || id + '/'} — запустите sync.cmd`; return; }
+  clearMeshes();
   cube.add(...faces);
   loading.style.display = 'none';
   render();
@@ -285,7 +337,7 @@ async function openViews(aptId) {
   root.classList.add('open', 'views');
   variantsBar.replaceChildren();
   loading.textContent = 'Загрузка…'; loading.style.display = '';
-  cube.clear();
+  clearMeshes();
   await Promise.all([loadViews(), loadApts()]);
   showAptInfo(aptId);
   const apt = viewsData.apartments[aptId];
@@ -299,7 +351,7 @@ async function showView(index) {
   viewIndex = index;
   viewPoint = null;
   showDots(apt.count);
-  cube.clear();
+  clearMeshes();
   const p = apt.points.find(q => q.index === index);
   wv.locator.style.visibility = p ? '' : 'hidden';
   if (!p) { loading.textContent = 'Этот вид не снят'; loading.style.display = ''; return; }

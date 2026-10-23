@@ -1,0 +1,382 @@
+{
+ "version": 1,
+ "test": "orthographic camera, same view as data/floors (floor_shots.py)",
+ "coordinateSystem": "UE: X forward, Y right, Z up, left-handed, centimeters; rotation in degrees",
+ "image": {
+  "fileNameFormat": "floor_{id}_ortho.png",
+  "width": 3840,
+  "height": 2160
+ },
+ "projectionNote": "orthographic: [u, v, 1] = projection(3x4) * [X, Y, Z, 1] (last row 0 0 0 1), u = right, v = down from top-left; orthoWidth/orthoHeight — frame size in cm; floorHomography(3x3) * [X, Y, 1] for points on Z = floorZ (affine).",
+ "shots": [
+  {
+   "id": "F1",
+   "title": "1 этаж",
+   "file": "floor_F1_ortho.png",
+   "rig": {
+    "pivot": [
+     -7740.0,
+     596.0,
+     14355.0
+    ],
+    "yaw": 231.0,
+    "pitch": -70.0,
+    "arm": 6883.0,
+    "back": 0.0
+   },
+   "floorZ": 13745.0,
+   "projectionMode": "orthographic",
+   "location": [
+    -6258.501356877901,
+    2425.4984618020144,
+    20822.90430886941
+   ],
+   "rotation": {
+    "pitch": -69.99999999999982,
+    "yaw": -128.99999999999994,
+    "roll": 1.8598639545244593e-14
+   },
+   "orthoWidth": 10000.0,
+   "orthoHeight": 5625.0,
+   "orthoNear": 0.0,
+   "orthoFar": 40000.0,
+   "image": {
+    "width": 3840,
+    "height": 2160
+   },
+   "projection": [
+    [
+     0.29842405341419165,
+     -0.2416590249583982,
+     -4.2632564923892816e-17,
+     4373.830936534892
+    ],
+    [
+     0.22708520171750554,
+     0.2804268798923757,
+     -0.1313357384520564,
+     4555.829591370875
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "floorHomography": [
+    [
+     0.29842405341419165,
+     -0.2416590249583982,
+     4373.830936534891
+    ],
+    [
+     0.22708520171750554,
+     0.2804268798923757,
+     2750.61986634736
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "anchors": [
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces3",
+     "widget": "Widget",
+     "text": "OFFICE SUITES",
+     "world": [
+      -10659.871104,
+      1596.949534,
+      13744.755649
+     ],
+     "pixel": [
+      806.8,
+      777.8
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces4",
+     "widget": "Widget",
+     "text": "PARCEL STORAGE",
+     "world": [
+      -7819.871104,
+      -893.0504659999999,
+      13744.755649
+     ],
+     "pixel": [
+      2256.0,
+      724.4
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces5",
+     "widget": "Widget",
+     "text": "RESTROOM",
+     "world": [
+      -8469.871104,
+      -93.05046600000003,
+      13764.755649
+     ],
+     "pixel": [
+      1868.7,
+      798.5
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces6",
+     "widget": "Widget",
+     "text": "PET WASH STATION",
+     "world": [
+      -8699.244565076737,
+      -239.76931606428167,
+      13744.755649
+     ],
+     "pixel": [
+      1835.7,
+      707.9
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces7",
+     "widget": "Widget",
+     "text": "BIKE HUB",
+     "world": [
+      -6979.871104,
+      -1173.050466,
+      13764.755649
+     ],
+     "pixel": [
+      2574.3,
+      834.0
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces8",
+     "widget": "Widget",
+     "text": "STROLLER ROOM",
+     "world": [
+      -6711.427385330753,
+      -1245.1208757438485,
+      13744.755649
+     ],
+     "pixel": [
+      2671.9,
+      877.4
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyPlaces",
+     "actor": "BP_LobbyPlaces9",
+     "widget": "Widget",
+     "text": "STROLLER ROOM",
+     "world": [
+      -8729.871104,
+      626.9495340000001,
+      13744.755649
+     ],
+     "pixel": [
+      1617.1,
+      944.0
+     ],
+     "pivot": [
+      0.0,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem3",
+     "widget": "Widget",
+     "index": 8,
+     "world": [
+      -7696.01660748639,
+      -3055.172582257268,
+      13744.755649
+     ],
+     "pixel": [
+      2815.5,
+      146.2
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem2",
+     "widget": "Widget",
+     "index": 5,
+     "world": [
+      -6072.818304,
+      -1950.060451000002,
+      13778.585844
+     ],
+     "pixel": [
+      3032.8,
+      820.3
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem5",
+     "widget": "Widget",
+     "index": 10,
+     "world": [
+      -7331.333628953412,
+      -2879.6677994336287,
+      13744.755649
+     ],
+     "pixel": [
+      2881.9,
+      278.3
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem6",
+     "widget": "Widget",
+     "index": 11,
+     "world": [
+      -7969.871104,
+      -353.05046600000014,
+      13694.755649
+     ],
+     "pixel": [
+      2080.7,
+      848.4
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem7",
+     "widget": "Widget",
+     "index": 16,
+     "world": [
+      -8157.966974365908,
+      -2196.3063327482528,
+      13744.755649
+     ],
+     "pixel": [
+      2470.1,
+      282.2
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem",
+     "widget": "Widget",
+     "index": 0,
+     "world": [
+      -9372.818303966307,
+      2599.9395485625937,
+      13778.585843721936
+     ],
+     "pixel": [
+      948.5,
+      1346.9
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    },
+    {
+     "class": "BP_LobbyViewItem",
+     "actor": "BP_LobbyViewItem4",
+     "widget": "Widget",
+     "index": 3,
+     "world": [
+      -6555.323147176917,
+      -667.3946211023415,
+      13728.585236499395
+     ],
+     "pixel": [
+      2578.8,
+      1077.0
+     ],
+     "pivot": [
+      0.5,
+      0.5
+     ],
+     "inFrame": true,
+     "visible": true
+    }
+   ]
+  }
+ ]
+}

@@ -156,9 +156,11 @@ function render() {
   contourMat.resolution.set(f.width, f.height);
   contourMat.linewidth = OUTLINE_SELECTED.widthPx * f.width / f.designW;   // px экрана дизайна → px canvas
   placeCamera(f.angle);
-  // Тот же кадр, что у фона: полный кадр 4:3 размером coverW×coverH с углом в (x, y) canvas (cover + приближение).
-  camera.fov = cam.camera.vFovDeg;
-  camera.aspect = cam.camera.sensorWidthMm / cam.camera.sensorHeightMm;
+  // Тот же кадр, что у фона: полный кадр (квадрат или старый 4:3) размером coverW×coverH с углом в (x, y) canvas.
+  // Угол по горизонтали один у всех наборов, вертикальный — из пропорций картинки: так 3D сходится и с кадрами,
+  // снятыми до смены сенсора (camera.json может быть уже от квадрата, а кадры в web/renders — ещё 4:3).
+  camera.aspect = f.coverW / f.coverH;
+  camera.fov = 2 * Math.atan(Math.tan(cam.camera.hFovDeg * Math.PI / 360) / camera.aspect) * 180 / Math.PI;
   camera.setViewOffset(f.coverW, f.coverH, -f.x, -f.y, f.width, f.height);
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
