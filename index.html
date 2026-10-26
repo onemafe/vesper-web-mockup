@@ -1276,7 +1276,9 @@
   const FLOORS_DIR = 'renders/Floors_Test/';
   // Этажи — вариант entry (2026-10-26): центр перспективы на входной группе, рамка как у обычных кадров
   // (floor_<id>_entry, data/floors/camera_entry.json, Docs/FLOORS.md «Вариант entry»); ?entry=0 — обычные кадры.
-  const SHOT_SETS = { floors: qs.get('entry') === '0' ? 'data/floors/camera.json' : 'data/floors/camera_entry.json',
+  const ENTRY = qs.get('entry') !== '0';
+  let floorFx = null;   // x кадра F1 (px), который на старте экрана этажей — в центре экрана (entry — вход), для конца пролёта
+  const SHOT_SETS = { floors: ENTRY ? 'data/floors/camera_entry.json' : 'data/floors/camera.json',
                       garden: 'data/garden/camera.json' };
   const GARDEN_SHOT = 'K';
   const isGardenPano = p => p.id.startsWith('BP_GardenCamera');
@@ -1325,6 +1327,8 @@
   function loadShots(set) {   // camera.json и все кадры набора — сразу, чтобы переключение было мгновенным
     return shotData[set] ||= fetch(SHOT_SETS[set]).then(r => r.json()).then(d => {
       if (set === 'garden') d.shots = d.shots.filter(s => s.id === GARDEN_SHOT);
+      const f1 = set === 'floors' && d.shots.find(s => s.id === 'F1');
+      if (f1) floorFx = f1.lensShift ? f1.lensShift.principalPointPx[0] * FLOOR_MASTER.w / f1.image.width : null;
       for (const shot of d.shots) {
         const img = shot.img = new Image();
         img.className = 'shot'; img.alt = ''; img.draggable = false;
@@ -1693,7 +1697,9 @@
   const flightLayers = [...document.querySelectorAll('.flight')];   // #flight — над всем, #mapFlight — под шапкой
   const flightVideos = flightLayers.flatMap(l => [...l.querySelectorAll('video')]);
   const FLIGHTS = {
-    lobby: { name: 'lobby', sets: qs.has('flight') ? [qs.get('flight')] : ['Lobby', 'Lobby_LQ'], angle: 155 * 2,
+    // entry (кадры этажей с центром на входе): видео LobbyEntry (ue/flight_render.py entry), пока его нет — обычное
+    lobby: { name: 'lobby', json: ENTRY ? 'lobby_entry' : 'lobby', angle: 155 * 2, endDx: lobbyEndDx,
+             sets: qs.has('flight') ? [qs.get('flight')] : ENTRY ? ['LobbyEntry', 'LobbyEntry_LQ', 'Lobby', 'Lobby_LQ'] : ['Lobby', 'Lobby_LQ'],
              fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
     garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
               fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
@@ -1706,7 +1712,7 @@
   let flying = false;
   for (const f of Object.values(FLIGHTS)) {
     f.set = 0; f.ok = true;
-    fetch(`data/flight/${f.name}.json`).then(r => r.json())
+    fetch(`data/flight/${f.json || f.name}.json`).then(r => r.json())
       .then(d => { f.angle = d.flight.from.orbitFrame * 2; })   // облёт — через 2° (data/orbit_main/camera.json)
       .catch(() => {});
     const src = () => {
@@ -1722,11 +1728,11 @@
   const easeIO = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;   // как у камеры приложения (степень 2)
   const orbitScale = () => Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // px дизайна на px мастер-кадра
   const floorScale = () => Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);
-  function placeVideo(v, s) {   // s — масштаб мастер-кадра; видео любого разрешения растягивается до него, по центру
-    const k = s * FLIGHT_MASTER.w / (v.videoWidth || FLIGHT_MASTER.w);
+  function placeVideo(v, s, dx = 0) {   // s — масштаб мастер-кадра; видео любого разрешения растягивается до него, по центру
+    const k = s * FLIGHT_MASTER.w / (v.videoWidth || FLIGHT_MASTER.w);  // dx — сдвиг вправо, px дизайна
     const w = (v.videoWidth || FLIGHT_MASTER.w), h = (v.videoHeight || FLIGHT_MASTER.h);
     v.style.width = `${w}px`; v.style.height = `${h}px`;
-    v.style.transform = `translate(${(W - w * k) / 2}px, ${(H - h * k) / 2}px) scale(${k})`;
+    v.style.transform = `translate(${(W - w * k) / 2 + dx}px, ${(H - h * k) / 2}px) scale(${k})`;
   }
   const nextFrame = () => new Promise(requestAnimationFrame);
   function rotateTo(deg) {   // докрутить облёт до угла кратчайшим путём
@@ -1748,20 +1754,27 @@
     v.parentElement.classList.add('on');
   }
   // Проиграть видео v, масштаб — от s0 к s1 по кривой камеры ease.
-  async function playFlight(v, s0, s1, ease = easeIO) {
+  // Сдвиг последнего кадра пролёта лобби, px дизайна: экран этажей стартует с floorFx в центре (entry — вход, panZoom.reset),
+  // видео — по центру кадра; без сдвига на стыке видео → кадр картинка прыгнула бы вбок. Края кадра не открываются — как apply.
+  function lobbyEndDx(s1) {
+    if (floorFx == null) return 0;
+    const w = FLOOR_MASTER.w * s1, centered = (W - w) / 2;
+    return Math.min(0, Math.max(W - w, W / 2 - floorFx * s1)) - centered;
+  }
+  async function playFlight(v, s0, s1, ease = easeIO, dx0 = 0, dx1 = 0) {   // dx — сдвиг видео вправо, с той же кривой
     if (v.readyState < 2) await new Promise(ok => { v.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
     v.currentTime = 0;
-    placeVideo(v, s0);
+    placeVideo(v, s0, dx0);
     showFlight(v);
     await nextFrame();
     try { await v.play(); } catch (e) { console.warn('flight:', e); return false; }
     while (!v.ended && !v.paused) {
       // Последний кадр начинается за кадр до конца видео (30 fps) — к нему масштаб уже конечный.
       const t = v.duration > 1 / 30 ? Math.min(1, v.currentTime / (v.duration - 1 / 30)) : 1;
-      placeVideo(v, s0 + (s1 - s0) * ease(t));
+      placeVideo(v, s0 + (s1 - s0) * ease(t), dx0 + (dx1 - dx0) * ease(t));
       await nextFrame();
     }
-    placeVideo(v, s1);
+    placeVideo(v, s1, dx1);
     return true;
   }
   function flightDone() {
@@ -1786,7 +1799,8 @@
       await rotateTo(f.angle);
       await waitFor(() => shown === f.angle, 3000);
       if (f === FLIGHTS.map) screen.classList.add('map-flight');
-      const ok = await playFlight(f.fwd, orbitScale(), (f.endScale || floorScale)(), f.ease);
+      const s1 = (f.endScale || floorScale)();
+      const ok = await playFlight(f.fwd, orbitScale(), s1, f.ease, 0, f.endDx ? f.endDx(s1) : 0);
       fittedSet = null;      // кадр — с вида на весь экран, как последний кадр видео
       open();
       if (ok) await new Promise(r => setTimeout(r, FLIGHT_FADE_MS + 50));
@@ -1795,8 +1809,8 @@
     }
   }
   function flyToLobby() {
-    loadShots('floors');   // кадры этажей грузятся, пока летим
-    return flyTo(FLIGHTS.lobby, () => openFloors('F1'));
+    // кадры этажей грузятся, пока летим; camera.json — до старта (из него конец пролёта: вход в центре экрана)
+    return loadShots('floors').catch(() => {}).then(() => flyTo(FLIGHTS.lobby, () => openFloors('F1')));
   }
   function flyToGarden() {
     loadShots('garden'); preparePath();   // кадр K и отрезок 1–2 грузятся, пока летим
@@ -1815,13 +1829,13 @@
       angle = target = f.angle; draw();   // под видео — облёт в угле пролёта
       if (f.rev.readyState < 2) await new Promise(ok => { f.rev.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
       f.rev.currentTime = 0;
-      const s1 = (f.endScale || floorScale)();
-      placeVideo(f.rev, s1);
+      const s1 = (f.endScale || floorScale)(), dx1 = f.endDx ? f.endDx(s1) : 0;
+      placeVideo(f.rev, s1, dx1);
       showFlight(f.rev);
       if (f === FLIGHTS.map) screen.classList.add('map-flight');
       close();                                               // экран тает над первым кадром видео
       await new Promise(r => setTimeout(r, FLIGHT_FADE_MS));
-      await playFlight(f.rev, s1, orbitScale(), f.ease);
+      await playFlight(f.rev, s1, orbitScale(), f.ease, dx1, 0);
     } finally {
       flightDone();
     }
