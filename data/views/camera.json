@@ -395,6 +395,897 @@
    ],
    "count": 3,
    "firstView": 0
+  },
+  "1-03-03": {
+   "points": [
+    {
+     "id": "1-03-03_0",
+     "index": 0,
+     "component": "ViewCameraComponent303_0",
+     "floor": "BP_A_F3",
+     "location": [
+      -7879.163674701596,
+      855.6732265700582,
+      14670.0
+     ],
+     "startView": {
+      "pitch": -0.0,
+      "yaw": -2.6684021949768106
+     },
+     "limits": {
+      "perpendicular": -9.0,
+      "yawMin": -89.0,
+      "yawMax": 41.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-03-03_0_sph_hq.png",
+     "equirectYaw": -24.0,
+     "crop": {
+      "yawMin": -134.0,
+      "yawMax": 86.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-03-03_1",
+     "index": 1,
+     "component": "ViewCameraComponent303_1",
+     "floor": "BP_A_F3",
+     "location": [
+      -7367.129859412452,
+      1683.1847801391696,
+      14670.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 38.19828414916995
+     },
+     "limits": {
+      "perpendicular": 6.0,
+      "yawMin": -74.0,
+      "yawMax": 86.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-03-03_1_sph_hq.png",
+     "equirectYaw": 6.0,
+     "crop": {
+      "yawMin": -119.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-03-03_2",
+     "index": 2,
+     "component": "ViewCameraComponent303_2",
+     "floor": "BP_A_F3",
+     "location": [
+      -7955.489170667351,
+      2400.5469981079727,
+      14670.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 96.9628829956055
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -29.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-03-03_2_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -74.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-03-04": {
+   "points": [
+    {
+     "id": "1-03-04_0",
+     "index": 0,
+     "component": "ViewCameraComponent304_0",
+     "floor": "BP_A_F3",
+     "location": [
+      -8684.78469523791,
+      2998.4600018081983,
+      14670.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 33.980049133300795
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -29.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-03-04_0_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -74.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-03-04_1",
+     "index": 1,
+     "component": "ViewCameraComponent304_1",
+     "floor": "BP_A_F3",
+     "location": [
+      -9519.845541978426,
+      3421.4968961977684,
+      14670.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 96.03448486328129
+     },
+     "limits": {
+      "perpendicular": 96.0,
+      "yawMin": 16.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-03-04_1_sph_hq.png",
+     "equirectYaw": 96.0,
+     "crop": {
+      "yawMin": -29.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-03-04_2",
+     "index": 2,
+     "component": "ViewCameraComponent304_2",
+     "floor": "BP_A_F3",
+     "location": [
+      -10402.230405453884,
+      2645.195931905486,
+      14670.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 141.004150390625
+     },
+     "limits": {
+      "perpendicular": 141.0,
+      "yawMin": 61.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-03-04_2_sph_hq.png",
+     "equirectYaw": 141.0,
+     "crop": {
+      "yawMin": 16.0,
+      "yawMax": 266.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-04-01": {
+   "points": [
+    {
+     "id": "1-04-01_0",
+     "index": 0,
+     "component": "ViewCameraComponent401_0",
+     "floor": "BP_A_F4",
+     "location": [
+      -10693.066225453884,
+      2284.447901905486,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 141.00415039062503
+     },
+     "limits": {
+      "perpendicular": 141.0,
+      "yawMin": 61.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-01_0_sph_hq.png",
+     "equirectYaw": 141.0,
+     "crop": {
+      "yawMin": 16.0,
+      "yawMax": 266.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-01_1",
+     "index": 1,
+     "component": "ViewCameraComponent401_1",
+     "floor": "BP_A_F4",
+     "location": [
+      -11164.189760764453,
+      1281.6234132450102,
+      15070.0
+     ],
+     "startView": {
+      "pitch": -0.0,
+      "yaw": -173.1569366455078
+     },
+     "limits": {
+      "perpendicular": 186.0,
+      "yawMin": 106.0,
+      "yawMax": 266.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-01_1_sph_hq.png",
+     "equirectYaw": 186.0,
+     "crop": {
+      "yawMin": 61.0,
+      "yawMax": 311.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-01_2",
+     "index": 2,
+     "component": "ViewCameraComponent401_2",
+     "floor": "BP_A_F4",
+     "location": [
+      -10592.857286950706,
+      567.7216194015544,
+      15065.305925063107
+     ],
+     "startView": {
+      "pitch": -0.7660171389579773,
+      "yaw": -157.43905639648438
+     },
+     "limits": {
+      "perpendicular": 201.0,
+      "yawMin": 151.0,
+      "yawMax": 281.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-01_2_sph_hq.png",
+     "equirectYaw": 216.0,
+     "crop": {
+      "yawMin": 106.0,
+      "yawMax": 326.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-04-02": {
+   "points": [
+    {
+     "id": "1-04-02_0",
+     "index": 0,
+     "component": "ViewCameraComponent402_0",
+     "floor": "BP_A_F4",
+     "location": [
+      -9857.758245236022,
+      -11.77561128165817,
+      15074.70023290081
+     ],
+     "startView": {
+      "pitch": -0.7982076406478902,
+      "yaw": -178.03631591796875
+     },
+     "limits": {
+      "perpendicular": 201.0,
+      "yawMin": 151.0,
+      "yawMax": 281.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-02_0_sph_hq.png",
+     "equirectYaw": 216.0,
+     "crop": {
+      "yawMin": 106.0,
+      "yawMax": 326.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-02_1",
+     "index": 1,
+     "component": "ViewCameraComponent402_1",
+     "floor": "BP_A_F4",
+     "location": [
+      -9125.085962414705,
+      -375.206183539684,
+      15070.0
+     ],
+     "startView": {
+      "pitch": -1.3914926731402894e-15,
+      "yaw": -98.12808990478523
+     },
+     "limits": {
+      "perpendicular": 276.0,
+      "yawMin": 196.0,
+      "yawMax": 356.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-02_1_sph_hq.png",
+     "equirectYaw": 276.0,
+     "crop": {
+      "yawMin": 151.0,
+      "yawMax": 401.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-02_2",
+     "index": 2,
+     "component": "ViewCameraComponent402_2",
+     "floor": "BP_A_F4",
+     "location": [
+      -8247.392745384268,
+      455.8321628512845,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 11.168916702270428
+     },
+     "limits": {
+      "perpendicular": 321.0,
+      "yawMin": 251.0,
+      "yawMax": 391.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-02_2_sph_hq.png",
+     "equirectYaw": 321.0,
+     "crop": {
+      "yawMin": 206.0,
+      "yawMax": 436.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-04-03": {
+   "points": [
+    {
+     "id": "1-04-03_0",
+     "index": 0,
+     "component": "ViewCameraComponent403_0",
+     "floor": "BP_A_F4",
+     "location": [
+      -7818.03529908702,
+      933.9195423097194,
+      15070.0
+     ],
+     "startView": {
+      "pitch": -0.0,
+      "yaw": -93.42264556884764
+     },
+     "limits": {
+      "perpendicular": 291.0,
+      "yawMin": 241.0,
+      "yawMax": 371.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-03_0_sph_hq.png",
+     "equirectYaw": 306.0,
+     "crop": {
+      "yawMin": 196.0,
+      "yawMax": 416.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-03_1",
+     "index": 1,
+     "component": "ViewCameraComponent403_1",
+     "floor": "BP_A_F4",
+     "location": [
+      -7474.296565023327,
+      1683.304408284537,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 5.404224395751872
+     },
+     "limits": {
+      "perpendicular": 6.0,
+      "yawMin": -74.0,
+      "yawMax": 86.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-03_1_sph_hq.png",
+     "equirectYaw": 6.0,
+     "crop": {
+      "yawMin": -119.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-03_2",
+     "index": 2,
+     "component": "ViewCameraComponent403_2",
+     "floor": "BP_A_F4",
+     "location": [
+      -8027.743002985633,
+      2311.172168713379,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 94.30599212646493
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -19.0,
+      "yawMax": 121.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-03_2_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -64.0,
+      "yawMax": 166.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 2
+  },
+  "1-04-04": {
+   "points": [
+    {
+     "id": "1-04-04_0",
+     "index": 0,
+     "component": "ViewCameraComponent404_0",
+     "floor": "BP_A_F4",
+     "location": [
+      -8327.155299703858,
+      2705.126830115077,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 24.844871520996165
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -29.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-04_0_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -74.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-04_1",
+     "index": 1,
+     "component": "ViewCameraComponent404_1",
+     "floor": "BP_A_F4",
+     "location": [
+      -9508.982863978426,
+      3318.7403371977693,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 96.03448486328129
+     },
+     "limits": {
+      "perpendicular": 96.0,
+      "yawMin": 16.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-04_1_sph_hq.png",
+     "equirectYaw": 96.0,
+     "crop": {
+      "yawMin": -29.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-04-04_2",
+     "index": 2,
+     "component": "ViewCameraComponent404_2",
+     "floor": "BP_A_F4",
+     "location": [
+      -10098.897385418537,
+      3019.871969486173,
+      15070.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 128.88700866699216
+     },
+     "limits": {
+      "perpendicular": 141.0,
+      "yawMin": 61.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-04-04_2_sph_hq.png",
+     "equirectYaw": 141.0,
+     "crop": {
+      "yawMin": 16.0,
+      "yawMax": 266.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-05-02": {
+   "points": [
+    {
+     "id": "1-05-02_0",
+     "index": 0,
+     "component": "ViewCameraComponent502_0",
+     "floor": "BP_A_F5",
+     "location": [
+      -7879.163674701791,
+      855.6732265659012,
+      15470.0
+     ],
+     "startView": {
+      "pitch": -0.0,
+      "yaw": -2.668401956558278
+     },
+     "limits": {
+      "perpendicular": -9.0,
+      "yawMin": -89.0,
+      "yawMax": 41.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-05-02_0_sph_hq.png",
+     "equirectYaw": -24.0,
+     "crop": {
+      "yawMin": -134.0,
+      "yawMax": 86.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-05-02_1",
+     "index": 1,
+     "component": "ViewCameraComponent502_1",
+     "floor": "BP_A_F5",
+     "location": [
+      -7367.124697348147,
+      1683.1782756753776,
+      15470.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 38.67406463623052
+     },
+     "limits": {
+      "perpendicular": 6.0,
+      "yawMin": -74.0,
+      "yawMax": 86.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-05-02_1_sph_hq.png",
+     "equirectYaw": 6.0,
+     "crop": {
+      "yawMin": -119.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-05-02_2",
+     "index": 2,
+     "component": "ViewCameraComponent502_2",
+     "floor": "BP_A_F5",
+     "location": [
+      -7955.674548946426,
+      2400.541682857622,
+      15470.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 86.32183837890628
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -29.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-05-02_2_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -74.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-05-03": {
+   "points": [
+    {
+     "id": "1-05-03_0",
+     "index": 0,
+     "component": "ViewCameraComponent503_0",
+     "floor": "BP_A_F5",
+     "location": [
+      -8684.826026705137,
+      2998.5268502762256,
+      15470.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 29.475788116455096
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -29.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-05-03_0_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -74.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-05-03_1",
+     "index": 1,
+     "component": "ViewCameraComponent503_1",
+     "floor": "BP_A_F5",
+     "location": [
+      -9519.60122255941,
+      3421.554398658883,
+      15470.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 110.45346069335942
+     },
+     "limits": {
+      "perpendicular": 96.0,
+      "yawMin": 16.0,
+      "yawMax": 176.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-05-03_1_sph_hq.png",
+     "equirectYaw": 96.0,
+     "crop": {
+      "yawMin": -29.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-05-03_2",
+     "index": 2,
+     "component": "ViewCameraComponent503_2",
+     "floor": "BP_A_F5",
+     "location": [
+      -10402.316971709062,
+      2645.1019832321936,
+      15470.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 133.67962646484372
+     },
+     "limits": {
+      "perpendicular": 141.0,
+      "yawMin": 61.0,
+      "yawMax": 221.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-05-03_2_sph_hq.png",
+     "equirectYaw": 141.0,
+     "crop": {
+      "yawMin": 16.0,
+      "yawMax": 266.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
+  },
+  "1-06-02": {
+   "points": [
+    {
+     "id": "1-06-02_0",
+     "index": 0,
+     "component": "ViewCameraComponent602_0",
+     "floor": "BP_A_F6",
+     "location": [
+      -7817.955367769942,
+      933.91152943381,
+      15870.0
+     ],
+     "startView": {
+      "pitch": -0.0,
+      "yaw": -98.02656555175786
+     },
+     "limits": {
+      "perpendicular": 291.0,
+      "yawMin": 241.0,
+      "yawMax": 371.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-06-02_0_sph_hq.png",
+     "equirectYaw": 306.0,
+     "crop": {
+      "yawMin": 196.0,
+      "yawMax": 416.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-06-02_1",
+     "index": 1,
+     "component": "ViewCameraComponent602_1",
+     "floor": "BP_A_F6",
+     "location": [
+      -7474.30101,
+      1683.3985899999998,
+      15870.0
+     ],
+     "startView": {
+      "pitch": -0.0,
+      "yaw": -5.088887490341628e-14
+     },
+     "limits": {
+      "perpendicular": 6.0,
+      "yawMin": -74.0,
+      "yawMax": 86.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-06-02_1_sph_hq.png",
+     "equirectYaw": 6.0,
+     "crop": {
+      "yawMin": -119.0,
+      "yawMax": 131.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 19 screenshots 90°, 2048px, hq"
+    },
+    {
+     "id": "1-06-02_2",
+     "index": 2,
+     "component": "ViewCameraComponent602_2",
+     "floor": "BP_A_F6",
+     "location": [
+      -8028.121952826096,
+      2311.2166314824253,
+      15870.0
+     ],
+     "startView": {
+      "pitch": 0.0,
+      "yaw": 72.30999755859372
+     },
+     "limits": {
+      "perpendicular": 51.0,
+      "yawMin": -19.0,
+      "yawMax": 121.0,
+      "pitchMin": -90.0,
+      "pitchMax": 40.0
+     },
+     "equirect": "sph/1-06-02_2_sph_hq.png",
+     "equirectYaw": 51.0,
+     "crop": {
+      "yawMin": -64.0,
+      "yawMax": 166.0,
+      "pitchMin": -90.0,
+      "pitchMax": 85.0
+     },
+     "note": "2026-10-26: 18 screenshots 90°, 2048px, hq"
+    }
+   ],
+   "count": 3,
+   "firstView": 0
   }
  }
 }

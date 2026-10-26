@@ -109,11 +109,11 @@
   /* 5 круглых кнопок внизу (пока без действий). */
   .dock {
     position: absolute; top: calc(770px + var(--db)); left: 50%; transform: translateX(-50%);
-    display: flex; gap: 23px; align-items: center;
+    display: flex; gap: 16px; align-items: center;   /* 6 кнопок (в макете 5 через 23 px) */
   }
   /* Кнопки — «Tabbar Button» UI-Kit, иконки — «Tabbar icons» 941:1845 (28×28). */
   .dock .b { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
-  .dock .light:not(.on) { color: #a7c5b3; }   /* у иконки дня/ночи в макете свой оттенок */
+  .dock .light:not(.on), .dock .light2:not(.on) { color: #a7c5b3; }   /* у иконки дня/ночи в макете свой оттенок */
   /* Время суток (Figma «Освещение — день / ночь» 925:9188 / 925:9339): зелёный овал 251×50 над доком. В макете —
      слайдер; у нас три точки на линии (решение 2026-10-26): 9:00, 17:00, 23:00, выбранная — «солнце» как ручка слайдера. */
   .timebar {
@@ -138,6 +138,27 @@
   .timebar .pt.on svg { display: block; }
   .timebar .pt b { position: absolute; left: 0; right: 0; bottom: 3px; font-weight: inherit; opacity: 0.7; }
   .timebar .pt.on b { opacity: 1; }
+  /* Время ползунком на одном ракурсе (кнопка слева от дня/ночи): такой же овал, «солнце» ездит по линии 4:15…23:00. */
+  .timeslider {
+    position: absolute; top: calc(684px + var(--db)); left: 50%; width: 300px; height: 50px; transform: translateX(-50%);
+    cursor: pointer; touch-action: none; opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+  }
+  .timeslider.open { opacity: 1; visibility: visible; }
+  .timeslider.lg:active { background-color: rgba(38, 87, 70, 0.7); }
+  #screen.map-on .timeslider, #screen.map-flight .timeslider { visibility: hidden; }
+  .timeslider .line { position: absolute; left: 26px; right: 26px; top: 20px; height: 2px; border-radius: 1px; background: #3fae7a; }
+  .timeslider .thumb { position: absolute; top: 21px; left: 26px; width: 28px; height: 28px; margin: -14px 0 0 -14px; pointer-events: none; }
+  .timeslider .thumb svg { display: block; width: 28px; height: 28px; }
+  .timeslider .thumb b {
+    position: absolute; left: 50%; top: 27px; transform: translateX(-50%); white-space: nowrap;
+    color: #b9d2c2; font-size: 10px; font-weight: 500; letter-spacing: 0.3px;
+  }
+  /* Кадр часа поверх облёта (под 3D-слоем): та же обрезка, что у кадра облёта, — по событию orbitframe. */
+  #timeShot { position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: none; }
+  #timeShot.on { display: block; }
+  #timeShot div { position: absolute; }
+  #timeShot img { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
+  #timeShot img.on { visibility: visible; }
   /* Карта района (Figma «1 - Объект - Район»): кадр вместо облёта, шапка и кнопки те же. Открывается 4-й кнопкой дока.
      Слой над облётом и 3D, под шапкой и доком; иконки САД/ЛОББИ на карте прячутся. */
   .mapview {
@@ -425,6 +446,7 @@
 <body>
 <div id="screen">
   <canvas id="pano"></canvas>
+  <div id="timeShot"><div></div></div>
   <canvas id="overlay"></canvas>
   <div class="flight" id="mapFlight">   <!-- пролёт облёт → карта: под картой, шапкой и доком (Figma «Район») -->
     <video id="mapFwd" muted playsinline preload="auto"></video>
@@ -447,11 +469,16 @@
   <button class="place lg flat lobby" data-place="lobby"><span class="ico lg"><img src="assets/icon-lobby.png" alt=""></span>ЛОББИ</button>
 
   <div class="dock">
+    <button class="b lg light2" aria-label="Освещение — ползунок"><i class="ic" style="--i: url(assets/tab-daynight.svg)"></i></button>
     <button class="b lg light" aria-label="День / ночь"><i class="ic" style="--i: url(assets/tab-daynight.svg)"></i></button>
     <button class="b lg fav" aria-label="Избранное"><i class="ic" style="--i: url(assets/tab-heart.svg)"></i></button>
     <button class="b lg filters" id="apts" aria-label="Квартиры"><i class="ic" style="--i: url(assets/tab-filters.svg)"></i></button>
     <button class="b lg map" id="dockMap" aria-label="Карта"><i class="ic" style="--i: url(assets/tab-location.svg)"></i></button>
     <button class="b lg share" aria-label="Поделиться"><i class="ic" style="--i: url(assets/tab-share.svg)"></i></button>
+  </div>
+  <div class="timeslider lg" id="timeslider" role="slider" aria-label="Время суток" aria-valuemin="255" aria-valuemax="1380">
+    <span class="line"></span>
+    <span class="thumb"><svg viewBox="0 0 28 28" aria-hidden="true"><g stroke="#4fd18e" stroke-width="2" stroke-linecap="round"><line x1="22.0" y1="14.0" x2="26.0" y2="14.0"/><line x1="19.7" y1="19.7" x2="22.5" y2="22.5"/><line x1="14.0" y1="22.0" x2="14.0" y2="26.0"/><line x1="8.3" y1="19.7" x2="5.5" y2="22.5"/><line x1="6.0" y1="14.0" x2="2.0" y2="14.0"/><line x1="8.3" y1="8.3" x2="5.5" y2="5.5"/><line x1="14.0" y1="6.0" x2="14.0" y2="2.0"/><line x1="19.7" y1="8.3" x2="22.5" y2="5.5"/></g><circle cx="14" cy="14" r="5" fill="#1d3f33" stroke="#4fd18e" stroke-width="2"/></svg><b>9:00</b></span>
   </div>
   <div class="timebar lg" id="timebar" role="radiogroup" aria-label="Время суток">
     <span class="line"></span>
@@ -492,6 +519,8 @@
     <video id="flightRev" muted playsinline preload="auto"></video>
     <video id="gardenFwd" muted playsinline preload="auto"></video>
     <video id="gardenRev" muted playsinline preload="auto"></video>
+    <video id="gardenMobileFwd" muted playsinline preload="auto"></video>
+    <video id="gardenMobileRev" muted playsinline preload="auto"></video>
   </div>
 
   <div class="floors" id="floors">
@@ -679,7 +708,7 @@
     const b = document.body.appendChild(Object.assign(document.createElement('button'), {
       style: 'position:fixed;right:12px;top:12px;z-index:100;padding:8px 14px;border:0;border-radius:10px;cursor:pointer;' +
         'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
-      onclick: () => { sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name; fit(); },
+      onclick: () => { sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name; fit(); gardenRefit(); },
     }));
     b.textContent = SIMS[sim].name;
   }
@@ -1097,8 +1126,111 @@
     draw();
   }
   for (const b of timebar.querySelectorAll('.pt')) b.onclick = () => setHour(+b.dataset.hour);
-  lightBtn.onclick = () => lightBtn.classList.toggle('on', timebar.classList.toggle('open'));
+  lightBtn.onclick = () => {
+    if (lightBtn.classList.toggle('on', timebar.classList.toggle('open'))) closeTimeSlider();
+  };
   setHour([9, 17, 23].includes(+qs.get('hour')) ? +qs.get('hour') : 9);
+
+  // --- Время ползунком на одном ракурсе: кнопка слева от дня/ночи (решение 2026-10-26; ue/time_render.py, Docs/ORBIT.md) ---
+  // Облёт докручивается до кадра orbit_177 (354°), поверх встаёт кадр часа из renders/360_Test/Time_177/HQ (нет — тест LQ)
+  // в той же обрезке, что кадр облёта (3D-слой — над ним). Ползунок 4:15…23:00, как TimeSlider приложения; без
+  // смешивания — показывается ближайший снятый кадр, отпустили — «солнце» встаёт на его час. Свайп облёта, пролёт,
+  // карта или кнопка дня/ночи закрывают ползунок — облёт снова в своём часе. ?tslider — сразу открыт (?tslider=23 — на 23:00).
+  const TIME_DIR = 'renders/360_Test/Time_177/';
+  const tsBtn = document.querySelector('.dock .light2');
+  const tsBar = document.getElementById('timeslider');
+  const tsThumb = tsBar.querySelector('.thumb'), tsLabel = tsThumb.querySelector('b');
+  const tsShot = document.getElementById('timeShot'), tsFrame = tsShot.firstElementChild;
+  const ts = { data: null, imgs: [], angle: 0, minutes: 540, shown: -1, open: false, req: 0 };
+  const tsFmt = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  async function tsPrepare() {   // data/time/camera.json и все кадры набора — сразу (20 кадров)
+    if (ts.data) return;
+    const d = await fetch('data/time/camera.json', { cache: 'no-cache' }).then(r => r.json());
+    const webp = f => f.file.replace(/\.png$/, '.webp');
+    const hq = await fetch(TIME_DIR + 'HQ/' + webp(d.frames[0]), { method: 'HEAD' }).then(r => r.ok, () => false);
+    const dir = TIME_DIR + (hq ? 'HQ/' : 'LQ/');
+    ts.imgs = d.frames.map(f => Object.assign(tsFrame.appendChild(new Image()),
+      { alt: '', decoding: 'async', onload: () => ts.data && tsShow(), src: dir + webp(f) }));
+    ts.angle = d.orbitFrame * SETS.HQ.stepDeg;
+    ts.data = d;
+  }
+  function tsShow() {   // ближайший загруженный кадр к времени ползунка
+    const { frames, slider } = ts.data;
+    let best = -1, bestD = Infinity;
+    frames.forEach((f, k) => {
+      const d = Math.abs(f.minutes - ts.minutes);
+      if (ts.imgs[k].complete && ts.imgs[k].naturalWidth && d < bestD) { bestD = d; best = k; }
+    });
+    const p = (ts.minutes - slider.minMinutes) / (slider.maxMinutes - slider.minMinutes);
+    tsThumb.style.left = `calc(26px + ${p} * (100% - 52px))`;
+    tsLabel.textContent = tsFmt(best >= 0 ? frames[best].minutes : ts.minutes);
+    tsBar.setAttribute('aria-valuenow', ts.minutes);
+    tsBar.setAttribute('aria-valuetext', tsLabel.textContent);
+    if (best === ts.shown) return;
+    ts.imgs[ts.shown]?.classList.remove('on');
+    ts.imgs[best]?.classList.add('on');
+    ts.shown = best;
+  }
+  function tsPlace() {   // кадр часа — на место кадра облёта (window.orbitFrame — в px холста)
+    const o = window.orbitFrame;
+    if (!o) return;
+    const k = W / o.width;
+    Object.assign(tsFrame.style, { left: `${o.x * k}px`, top: `${o.y * k}px`, width: `${o.coverW * k}px`, height: `${o.coverH * k}px` });
+  }
+  screen.addEventListener('orbitframe', tsPlace);
+  async function openTimeSlider() {
+    const req = ++ts.req;
+    tsBtn.classList.add('on'); tsBar.classList.add('open');
+    timebar.classList.remove('open'); lightBtn.classList.remove('on');
+    try { await tsPrepare(); } catch (e) { console.warn('time slider:', e); closeTimeSlider(); return; }
+    if (req !== ts.req) return;
+    const { minMinutes, maxMinutes } = ts.data.slider;
+    const start = parseFloat(qs.get('tslider'));   // ?tslider=23 — первый раз сразу на этом часе
+    ts.minutes = Math.min(maxMinutes, Math.max(minMinutes, Math.round((ts.started || !isFinite(start) ? hour : start) * 60)));   // старт — час облёта
+    ts.started = true;
+    tsShow();
+    await rotateTo(ts.angle);
+    await waitFor(() => shown === ts.angle, 3000);
+    if (req !== ts.req) return;
+    tsPlace();
+    tsShot.classList.add('on');
+    ts.open = true;
+  }
+  function closeTimeSlider() {
+    ts.req++; ts.open = false;
+    tsBtn.classList.remove('on'); tsBar.classList.remove('open'); tsShot.classList.remove('on');
+  }
+  tsBtn.onclick = () => tsBar.classList.contains('open') ? closeTimeSlider() : openTimeSlider();
+  let tsDrag = false;
+  function tsAt(e) {
+    const r = tsBar.getBoundingClientRect(), pad = 26 * scale;
+    const p = Math.min(1, Math.max(0, (e.clientX - r.left - pad) / (r.width - 2 * pad)));
+    const { minMinutes, maxMinutes } = ts.data.slider;
+    ts.minutes = Math.round(minMinutes + p * (maxMinutes - minMinutes));
+    tsShow();
+  }
+  tsBar.addEventListener('pointerdown', e => {
+    if (!ts.data) return;
+    tsBar.setPointerCapture(e.pointerId);
+    tsDrag = true; tsAt(e);
+  });
+  tsBar.addEventListener('pointermove', e => { if (tsDrag) tsAt(e); });
+  const tsUp = () => {
+    if (!tsDrag) return;
+    tsDrag = false;
+    if (ts.shown >= 0) { ts.minutes = ts.data.frames[ts.shown].minutes; tsShow(); }
+  };
+  tsBar.addEventListener('pointerup', tsUp);
+  tsBar.addEventListener('pointercancel', tsUp);
+  // Свайп облёта (а не тап — тап по подсветке квартиры ползунок не закрывает) — закрыть.
+  let tsSwipeX = null;
+  canvas.addEventListener('pointerdown', e => { tsSwipeX = e.clientX; });
+  canvas.addEventListener('pointermove', e => {
+    if (tsSwipeX !== null && tsBar.classList.contains('open') && Math.abs(e.clientX - tsSwipeX) > 6) closeTimeSlider();
+  });
+  canvas.addEventListener('pointerup', () => { tsSwipeX = null; });
+  canvas.addEventListener('pointercancel', () => { tsSwipeX = null; });
+  if (qs.has('tslider')) openTimeSlider();
 
   // --- Бургер-меню ---
   const menu = document.getElementById('menu');
@@ -1269,7 +1401,7 @@
   //         (data/pano/camera.json, мировая точка камеры → пиксель по projection кадра); нажатие открывает pano.js;
   //   P-1 — Widget (PARKING -2) → «Parking -2  M9». Остальные якоря (подписи зон лобби, кладовые) в макете не нарисованы.
   // Открывают: иконка ЛОББИ на общем виде, пункт меню «ЛОББИ И ПАРКОВКА»; ?floor=F1|P-1|P-2 — сразу (для проверки).
-  // Двор — тот же экран без переключателя этажей: кадр renders/Floors_Test/garden_K.webp и data/garden/camera.json
+  // Двор — тот же экран без переключателя этажей: кадр renders/Floors_Test/garden_K.webp (вертикальный экран — garden_K_mobile, см. gardenShot) и data/garden/camera.json
   // (ue/garden_shots.py K, Docs/RENDER.md раздел 6; K заменил G — 2026-10-22, G в camera.json остаётся, но не грузится). Открывают иконка САД и пункт меню «САД»; ?garden — сразу. Кнопки — «360» в точках
   // панорам двора (BP_GardenCamera*), пока их нет — кадр без кнопок. Другая камера, поэтому при переходе двор ↔ этажи
   // вид сбрасывается на весь экран.
@@ -1280,7 +1412,12 @@
   let floorFx = null;   // x кадра F1 (px), который на старте экрана этажей — в центре экрана (entry — вход), для конца пролёта
   const SHOT_SETS = { floors: ENTRY ? 'data/floors/camera_entry.json' : 'data/floors/camera.json',
                       garden: 'data/garden/camera.json' };
-  const GARDEN_SHOT = 'K';
+  // Кадр сада по форме экрана (решение 2026-10-26): вертикальный экран (телефон, вид «Мобайл») — K_mobile (9:16,
+  // ue/garden_shots.py K_mobile), горизонтальный (ПК, телефон боком) — K. Поворот / смена вида при открытом саде
+  // меняет кадр (fit → gardenRefit). Видео сада (пролёт облёт → K, видео B K ↔ отрезок) сняты от K: с K_mobile
+  // переход к ним — наплывом. ?gshot=K|K_mobile — принудительно.
+  const GARDEN_SHOT = 'K', GARDEN_SHOT_MOBILE = 'K_mobile';
+  const gardenShot = () => qs.get('gshot') || (W < H ? GARDEN_SHOT_MOBILE : GARDEN_SHOT);
   const isGardenPano = p => p.id.startsWith('BP_GardenCamera');
   const FLOOR_MAX_ZOOM = 3;
   const floors = document.getElementById('floors');
@@ -1297,9 +1434,9 @@
       else if (a.class === 'BP_Parking_01' && a.widget === 'Widget')
         pins.push({ a, park: 'Parking -2  M9', go: 'P-2' });
     }
-    if (shot.id === 'F1' || shot.id === GARDEN_SHOT)
+    if (shot.id === 'F1' || shot.garden)
       // Варианты точки (variantOf) — без своей кнопки, переключаются в самой панораме.
-      for (const p of panoPoints.filter(p => !p.variantOf && isGardenPano(p) === (shot.id === GARDEN_SHOT))) {
+      for (const p of panoPoints.filter(p => !p.variantOf && isGardenPano(p) === !!shot.garden)) {
         const px = projectPixel(shot, p.location);
         if (px && px[0] >= 0 && px[0] < shot.image.width && px[1] >= 0 && px[1] < shot.image.height)
           pins.push({ a: { pixel: px, pivot: [0.5, 0.5] }, text: '360', pano: p.id });
@@ -1321,23 +1458,27 @@
       const [u, w] = el._pixel, [px, py] = el._pivot;
       el.style.transform = `translate(${v.x + u * v.s}px, ${v.y + w * v.s}px) translate(${-px * 100}%, ${-py * 100}%)`;
     }
-  }, v => enterPath(v));   // кадр K: любое приближение — сразу видео в отрезок 1–2
+  }, v => enterPath(v));   // кадр сада: любое приближение — сразу в отрезок 1–2
   const shotData = {};
   let floorCur = null, fittedSet = null;
   function loadShots(set) {   // camera.json и все кадры набора — сразу, чтобы переключение было мгновенным
     return shotData[set] ||= fetch(SHOT_SETS[set]).then(r => r.json()).then(d => {
-      if (set === 'garden') d.shots = d.shots.filter(s => s.id === GARDEN_SHOT);
+      // Сад: оба кадра (K и K_mobile) в наборе, картинка грузится только у нужного форме экрана (shotImg).
+      if (set === 'garden') d.shots = d.shots.filter(s => (s.garden = s.id === GARDEN_SHOT || s.id === GARDEN_SHOT_MOBILE));
       const f1 = set === 'floors' && d.shots.find(s => s.id === 'F1');
       if (f1) floorFx = f1.lensShift ? f1.lensShift.principalPointPx[0] * FLOOR_MASTER.w / f1.image.width : null;
-      for (const shot of d.shots) {
-        const img = shot.img = new Image();
-        img.className = 'shot'; img.alt = ''; img.draggable = false;
-        shot.loaded = new Promise(ok => { img.onload = ok; img.onerror = ok; });
-        img.src = FLOORS_DIR + shot.file.replace(/\.png$/i, '.webp');
-        floorShots.appendChild(img);
-      }
+      for (const shot of d.shots) if (!shot.garden || shot.id === gardenShot()) shotImg(shot);
       return d;
     });
+  }
+  function shotImg(shot) {
+    if (shot.img) return shot.img;
+    const img = shot.img = new Image();
+    img.className = 'shot'; img.alt = ''; img.draggable = false;
+    shot.loaded = new Promise(ok => { img.onload = ok; img.onerror = ok; });
+    img.src = FLOORS_DIR + shot.file.replace(/\.png$/i, '.webp');
+    floorShots.appendChild(img);
+    return img;
   }
   function makePin(p) {
     const el = document.createElement('button');
@@ -1383,6 +1524,7 @@
     let shot;
     try {
       shot = (await loadShots(set)).shots.find(s => s.id === id);
+      shotImg(shot);
       await Promise.all([shot.loaded, panoLoaded]);
     } catch (e) {
       console.error('floors:', e);
@@ -1407,13 +1549,17 @@
     floors.classList.add('open');
     showFloor(id, set);
   }
-  const openGarden = () => openFloors(GARDEN_SHOT, 'garden');
+  const openGarden = () => openFloors(gardenShot(), 'garden');
+  function gardenRefit() {   // форма экрана поменялась при открытом саде — кадр под неё, вид снова на весь экран
+    if (!floors.classList.contains('open') || !floors.classList.contains('garden') || floorCur === gardenShot()) return;
+    fittedSet = null; showFloor(gardenShot(), 'garden');
+  }
   floorTabs.forEach(b => b.onclick = () => { if (b.dataset.floor !== floorCur) showFloor(b.dataset.floor); });
   document.querySelector('.place.lobby').onclick = () => flyToLobby();
   document.querySelector('.place.garden').onclick = () => flyToGarden();
   document.getElementById('menuFloors').addEventListener('click', () => flyToLobby());
   document.getElementById('menuGarden').addEventListener('click', () => flyToGarden());
-  if (qs.has('garden')) openGarden();
+  if (qs.has('garden')) requestAnimationFrame(openGarden);   // после fit(): кадр сада — по форме экрана
   document.getElementById('floorsBurger').onclick = () => menu.classList.add('open');
   document.getElementById('floorsClose').onclick = () => flyBack();
   document.getElementById('menuOverview').addEventListener('click', () => { closeScreens(); mapOff(); });
@@ -1546,7 +1692,7 @@
     }
     requestAnimationFrame(pathTick);
   })(performance.now());
-  async function openPath(kView) {   // kView — вид K на экране {s, x, y} (px дизайна на px кадра K)
+  async function openPath(kView) {   // kView — вид K на экране {s, x, y} (px дизайна на px кадра K); нет — наплыв
     if (gp.busy || !(await preparePath())) return;
     gp.busy = true;
     try {
@@ -1572,8 +1718,9 @@
   }
   function enterPath(v) {   // true — жест приближения забран (сад и отрезок есть), иначе обычное приближение
     if (!floors.classList.contains('garden') || !gp.set) return false;
+    // Видео B начинается кадром K — с K_mobile (другая камера) в отрезок наплывом.
     if (!gp.busy && !gpathEl.classList.contains('open'))
-      openPath({ s: v.s * (floorShotWidth() || PATH_MASTER.w) / PATH_MASTER.w, x: v.x, y: v.y });
+      openPath(floorCur === GARDEN_SHOT ? { s: v.s * (floorShotWidth() || PATH_MASTER.w) / PATH_MASTER.w, x: v.x, y: v.y } : null);
     return true;
   }
   function floorShotWidth() {   // ширина картинки K в px (по ней считает panZoom)
@@ -1590,9 +1737,10 @@
       if (a < 1) requestAnimationFrame(step); else ok();
     })(t0));
     try {
-      const L = pathLayout();
-      const played = await playZoom(GZOOM.rev, L, L);   // видео B назад: середина → K (на весь экран)
-      fittedSet = null; showFloor(GARDEN_SHOT, 'garden');
+      const L = pathLayout(), shot = gardenShot();
+      // видео B назад: середина → K (на весь экран); в K_mobile — наплыв
+      const played = shot === GARDEN_SHOT && await playZoom(GZOOM.rev, L, L);
+      fittedSet = null; showFloor(shot, 'garden');
       if (played) {   // последний кадр видео = K на весь экран: слой убирается сразу
         await new Promise(r => setTimeout(r, 120));   // K успевает встать под видео
         gpathEl.classList.add('snap');
@@ -1640,7 +1788,7 @@
   document.querySelector('.place.garden').addEventListener('click', preparePath);
   document.getElementById('menuGarden').addEventListener('click', preparePath);
   if (qs.has('garden') || qs.has('gpath')) preparePath();
-  if (qs.has('gpath')) { openGarden(); openPath(); }
+  if (qs.has('gpath')) requestAnimationFrame(() => { openGarden(); openPath(); });   // после fit(), как ?garden
 
   // --- Карта района (4-я кнопка дока, Figma «1 - Объект - Район», Docs/FLOORS.md «Карта») ---
   // Кадр renders/Floors_Test/map_M.webp — камера карты приложения на самом дальнем зуме (ue/map_shots.py,
@@ -1661,6 +1809,7 @@
     if (on) {
       // Карта — отдельный вид: режим «квартиры» и попап выключаем.
       screen.dispatchEvent(new Event('apartmentclear'));
+      closeTimeSlider();
       const apts = document.getElementById('apts');
       if (apts.classList.contains('on')) apts.click();
       if (!mapImg.getAttribute('src')) mapImg.src = MAP_SRC;
@@ -1688,11 +1837,14 @@
   // к раскладке кадра 16:9 (cover, как panZoom.reset) — на телефоне это приближение в 4/3, на ПК почти ничего.
   // Наборы: 4K (Lobby / Garden), нет — тест 960×720 (*_LQ); ?flight= / ?gflight=<набор> — свой. Видео нет — экран
   // открывается без пролёта. В пролёте в сад меняется и время суток (9:00 облёта → 13.85 сада).
+  // Сад на вертикальном экране (K_mobile) — своё видео 9:16 garden_mobile.mp4 (FLIGHTS.gardenMobile, gardenFlight): на телефоне
+  // облёт, видео и K_mobile вписаны по высоте в одном масштабе — масштаб видео постоянный.
   // Карта (ue/map_flight.py, раздел 7): кнопка карты / «РАЙОН» — облёт к кадру пролёта, map.mp4 (2.5 с, бленд вида
   // приложения, объектив 25 → 75 мм, 9:00 → 18.9), в конце наплывает карта на старте (MAP_START_ZOOM); та же кнопка и
   // «ОБЩИЙ ВИД» — map_rev.mp4. Видео карты — в своём слое под шапкой и доком (#mapFlight). ?mflight=<набор> — свой.
   const FLIGHT_DIR = 'renders/Flight/';
   const FLIGHT_MASTER = { w: 3840, h: 2880 }, FLOOR_MASTER = { w: 3840, h: 2160 };   // кадр пролёта и кадр F1 / K, px
+  const MOBILE_FLIGHT_MASTER = { w: 2160, h: 3840 };   // кадр вертикального пролёта в сад = K_mobile, px
   const FLIGHT_FADE_MS = 250;   // наплыв экрана этажей (transition .floors)
   const flightLayers = [...document.querySelectorAll('.flight')];   // #flight — над всем, #mapFlight — под шапкой
   const flightVideos = flightLayers.flatMap(l => [...l.querySelectorAll('video')]);
@@ -1703,6 +1855,14 @@
              fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
     garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
               fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
+    // Вертикальный пролёт в K_mobile (ue/garden_flight.py … mobile, решение 2026-10-26): видео 9:16, первый кадр —
+    // середина кадра облёта 4:3 той же высоты, последний — K_mobile. Стартовый кадр облёта тот же, что у garden
+    // (json — garden.json: garden_mobile.json пишется на рендер-машине и сюда не попадает). ?gmflight=<набор> — свой.
+    gardenMobile: { name: 'garden_mobile', json: 'garden', master: MOBILE_FLIGHT_MASTER, angle: 25 * 2,
+                    sets: qs.has('gmflight') ? [qs.get('gmflight')] : ['GardenMobile', 'GardenMobile_LQ'],
+                    fwd: document.getElementById('gardenMobileFwd'), rev: document.getElementById('gardenMobileRev'),
+                    startScale: () => orbitScale() * FLIGHT_MASTER.h / MOBILE_FLIGHT_MASTER.h,   // высота кадра облёта = высота видео
+                    endScale: () => Math.max(W / MOBILE_FLIGHT_MASTER.w, H / MOBILE_FLIGHT_MASTER.h) },   // K_mobile cover
     map: { name: 'map', sets: qs.has('mflight') ? [qs.get('mflight')] : ['Map', 'Map_LQ'], angle: 2 * 2,
            fwd: document.getElementById('mapFwd'), rev: document.getElementById('mapRev'),
            ease: t => t * t * (3 - 2 * t),   // VTBlend_Cubic — бленд вида приложения на камеру карты
@@ -1724,13 +1884,15 @@
       else { f.ok = false; console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`); }
     };
     src();
+    f.fwd.master = f.rev.master = f.master || FLIGHT_MASTER;   // по нему placeVideo
   }
   const easeIO = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;   // как у камеры приложения (степень 2)
   const orbitScale = () => Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // px дизайна на px мастер-кадра
   const floorScale = () => Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);
   function placeVideo(v, s, dx = 0) {   // s — масштаб мастер-кадра; видео любого разрешения растягивается до него, по центру
-    const k = s * FLIGHT_MASTER.w / (v.videoWidth || FLIGHT_MASTER.w);  // dx — сдвиг вправо, px дизайна
-    const w = (v.videoWidth || FLIGHT_MASTER.w), h = (v.videoHeight || FLIGHT_MASTER.h);
+    const m = v.master || FLIGHT_MASTER;                                // dx — сдвиг вправо, px дизайна
+    const k = s * m.w / (v.videoWidth || m.w);
+    const w = (v.videoWidth || m.w), h = (v.videoHeight || m.h);
     v.style.width = `${w}px`; v.style.height = `${h}px`;
     v.style.transform = `translate(${(W - w * k) / 2 + dx}px, ${(H - h * k) / 2}px) scale(${k})`;
   }
@@ -1794,13 +1956,14 @@
       // Пролёт — с общего вида: снять выбор квартиры (вид вернётся к BASE_VIEW), закрыть карту.
       screen.dispatchEvent(new Event('apartmentclear'));
       setMap(false);
+      closeTimeSlider();     // пролёт — от облёта в его часе
       await waitFor(() => !tween, 1000);
       if (hour !== 9) await setHour(9);   // видео пролётов — в 9:00
       await rotateTo(f.angle);
       await waitFor(() => shown === f.angle, 3000);
       if (f === FLIGHTS.map) screen.classList.add('map-flight');
       const s1 = (f.endScale || floorScale)();
-      const ok = await playFlight(f.fwd, orbitScale(), s1, f.ease, 0, f.endDx ? f.endDx(s1) : 0);
+      const ok = await playFlight(f.fwd, (f.startScale || orbitScale)(), s1, f.ease, 0, f.endDx ? f.endDx(s1) : 0);
       fittedSet = null;      // кадр — с вида на весь экран, как последний кадр видео
       open();
       if (ok) await new Promise(r => setTimeout(r, FLIGHT_FADE_MS + 50));
@@ -1812,15 +1975,20 @@
     // кадры этажей грузятся, пока летим; camera.json — до старта (из него конец пролёта: вход в центре экрана)
     return loadShots('floors').catch(() => {}).then(() => flyTo(FLIGHTS.lobby, () => openFloors('F1')));
   }
+  // Пролёт сада по кадру, который откроется: K — видео garden, K_mobile — вертикальное garden_mobile, если экран не
+  // шире 9:16 (все телефоны); шире (планшет вертикально) — видео не хватает ширины: наплыв без видео (NO_FLIGHT).
+  const NO_FLIGHT = { ok: false };
+  const gardenFlight = (shot = gardenShot()) => shot !== GARDEN_SHOT_MOBILE ? FLIGHTS.garden
+    : W / H <= MOBILE_FLIGHT_MASTER.w / MOBILE_FLIGHT_MASTER.h + 1e-3 ? FLIGHTS.gardenMobile : NO_FLIGHT;
   function flyToGarden() {
     loadShots('garden'); preparePath();   // кадр K и отрезок 1–2 грузятся, пока летим
-    return flyTo(FLIGHTS.garden, openGarden);
+    return flyTo(gardenFlight(), openGarden);
   }
   function flyToMap() {
     if (!mapImg.getAttribute('src')) mapImg.src = MAP_SRC;   // кадр карты грузится, пока летим
     return flyTo(FLIGHTS.map, FLIGHTS.map.open);
   }
-  async function flyBack(f = floors.classList.contains('garden') ? FLIGHTS.garden : FLIGHTS.lobby) {
+  async function flyBack(f = floors.classList.contains('garden') ? gardenFlight(floorCur) : FLIGHTS.lobby) {
     if (flying) return;
     const close = f.close || (() => floors.classList.remove('open'));
     if (!f.ok || !f.rev.getAttribute('src')) { close(); return; }
@@ -1835,14 +2003,15 @@
       if (f === FLIGHTS.map) screen.classList.add('map-flight');
       close();                                               // экран тает над первым кадром видео
       await new Promise(r => setTimeout(r, FLIGHT_FADE_MS));
-      await playFlight(f.rev, s1, orbitScale(), f.ease, dx1, 0);
+      await playFlight(f.rev, s1, (f.startScale || orbitScale)(), f.ease, dx1, 0);
     } finally {
       flightDone();
     }
   }
 
-  addEventListener('resize', fit);
-  if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+  const refit = () => { fit(); gardenRefit(); };   // сад — кадр по форме экрана
+  addEventListener('resize', refit);
+  if (window.visualViewport) visualViewport.addEventListener('resize', refit);
   fit();
   // Android: полноэкранный режим по первому касанию (iPhone так не умеет — там «На экран Домой»).
   if (PHONE && document.documentElement.requestFullscreen && matchMedia('(display-mode: browser)').matches) {

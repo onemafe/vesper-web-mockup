@@ -1,0 +1,138 @@
+{
+ "version": 1,
+ "coordinateSystem": "UE: X forward, Y right, Z up, left-handed, centimeters; rotation in degrees",
+ "orbitFrame": 177,
+ "slider": {
+  "minMinutes": 255,
+  "maxMinutes": 1380,
+  "defaultMinutes": 540,
+  "note": "WBP_SunSlider.TimeSlider range; hour set via WBP_SunSlider.Set Hour"
+ },
+ "camera": {
+  "focalLengthMm": 25.0,
+  "sensorWidthMm": 23.760000228881836,
+  "sensorHeightMm": 23.760000228881836,
+  "hFovDeg": 50.834134481872155,
+  "vFovDeg": 50.834134481872155,
+  "location": [
+   -10630.388863812459,
+   26689.443981061228,
+   21460.59471378013
+  ],
+  "rotation": {
+   "pitch": -10.5,
+   "yaw": -85.0,
+   "roll": 0.0
+  }
+ },
+ "image": {
+  "width": 3840,
+  "height": 3840,
+  "baseFrame": {
+   "width": 3840,
+   "height": 2880
+  }
+ },
+ "frames": [
+  {
+   "minutes": 255,
+   "hour": 4.25,
+   "file": "time_0415.png"
+  },
+  {
+   "minutes": 300,
+   "hour": 5.0,
+   "file": "time_0500.png"
+  },
+  {
+   "minutes": 360,
+   "hour": 6.0,
+   "file": "time_0600.png"
+  },
+  {
+   "minutes": 420,
+   "hour": 7.0,
+   "file": "time_0700.png"
+  },
+  {
+   "minutes": 480,
+   "hour": 8.0,
+   "file": "time_0800.png"
+  },
+  {
+   "minutes": 540,
+   "hour": 9.0,
+   "file": "time_0900.png"
+  },
+  {
+   "minutes": 600,
+   "hour": 10.0,
+   "file": "time_1000.png"
+  },
+  {
+   "minutes": 660,
+   "hour": 11.0,
+   "file": "time_1100.png"
+  },
+  {
+   "minutes": 720,
+   "hour": 12.0,
+   "file": "time_1200.png"
+  },
+  {
+   "minutes": 780,
+   "hour": 13.0,
+   "file": "time_1300.png"
+  },
+  {
+   "minutes": 840,
+   "hour": 14.0,
+   "file": "time_1400.png"
+  },
+  {
+   "minutes": 900,
+   "hour": 15.0,
+   "file": "time_1500.png"
+  },
+  {
+   "minutes": 960,
+   "hour": 16.0,
+   "file": "time_1600.png"
+  },
+  {
+   "minutes": 1020,
+   "hour": 17.0,
+   "file": "time_1700.png"
+  },
+  {
+   "minutes": 1080,
+   "hour": 18.0,
+   "file": "time_1800.png"
+  },
+  {
+   "minutes": 1140,
+   "hour": 19.0,
+   "file": "time_1900.png"
+  },
+  {
+   "minutes": 1200,
+   "hour": 20.0,
+   "file": "time_2000.png"
+  },
+  {
+   "minutes": 1260,
+   "hour": 21.0,
+   "file": "time_2100.png"
+  },
+  {
+   "minutes": 1320,
+   "hour": 22.0,
+   "file": "time_2200.png"
+  },
+  {
+   "minutes": 1380,
+   "hour": 23.0,
+   "file": "time_2300.png"
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+{
+ "frames": 31,
+ "fps": 30,
+ "forward": "garden.mp4",
+ "reverse": "garden_rev.mp4",
+ "note": "PNG frames of tools/flight_video.py: compress_renders.py skips them, copies the .mp4 as is"
+}
