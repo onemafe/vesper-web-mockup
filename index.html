@@ -1189,11 +1189,11 @@
       v.x = cx - (cx - v.x) * s / v.s; v.y = cy - (cy - v.y) * s / v.s; v.s = s;
       apply();
     }
-    function reset(iw, ih, start = 1) {   // start — старт ближе cover во столько раз
+    function reset(iw, ih, start = 1, fx = iw / 2) {   // start — старт ближе cover во столько раз; fx — x кадра в центре экрана
       v.iw = iw; v.ih = ih;
       v.cover = Math.max(W / iw, H / ih);   // на весь экран
       v.min = v.cover * start;              // дальше старта не отдаляется
-      v.s = v.min; v.x = (W - iw * v.s) / 2; v.y = (H - ih * v.s) / 2;
+      v.s = v.min; v.x = W / 2 - fx * v.s; v.y = (H - ih * v.s) / 2;   // края не открываются — apply прижмёт
       apply();
     }
 
@@ -1390,7 +1390,10 @@
     floorsLoading.style.display = 'none';
     floorPins.replaceChildren(...floorPinsFor(shot).map(makePin));
     // Камера у кадров набора одна: на весь экран — только при первом показе набора, дальше панорама и масштаб сохраняются.
-    if (snap) { fittedSet = set; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight); }
+    // Кадры entry — по центру экрана входная группа (центр перспективы, lensShift.principalPointPx), а не середина кадра:
+    // на телефоне видно лобби со входом посередине (решение 2026-10-26); на широком экране кадр и так целиком.
+    const fx = shot.lensShift ? shot.lensShift.principalPointPx[0] * shot.img.naturalWidth / shot.image.width : undefined;
+    if (snap) { fittedSet = set; floorView.reset(shot.img.naturalWidth, shot.img.naturalHeight, 1, fx); }
     else floorView.redraw();
     showShot(shot.img, snap);
   }
