@@ -1274,7 +1274,10 @@
   // панорам двора (BP_GardenCamera*), пока их нет — кадр без кнопок. Другая камера, поэтому при переходе двор ↔ этажи
   // вид сбрасывается на весь экран.
   const FLOORS_DIR = 'renders/Floors_Test/';
-  const SHOT_SETS = { floors: 'data/floors/camera.json', garden: 'data/garden/camera.json' };
+  // Этажи — вариант entry (2026-10-26): центр перспективы на входной группе, рамка как у обычных кадров
+  // (floor_<id>_entry, data/floors/camera_entry.json, Docs/FLOORS.md «Вариант entry»); ?entry=0 — обычные кадры.
+  const SHOT_SETS = { floors: qs.get('entry') === '0' ? 'data/floors/camera.json' : 'data/floors/camera_entry.json',
+                      garden: 'data/garden/camera.json' };
   const GARDEN_SHOT = 'K';
   const isGardenPano = p => p.id.startsWith('BP_GardenCamera');
   const FLOOR_MAX_ZOOM = 3;
