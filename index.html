@@ -114,6 +114,30 @@
   /* Кнопки — «Tabbar Button» UI-Kit, иконки — «Tabbar icons» 941:1845 (28×28). */
   .dock .b { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
   .dock .light:not(.on) { color: #a7c5b3; }   /* у иконки дня/ночи в макете свой оттенок */
+  /* Время суток (Figma «Освещение — день / ночь» 925:9188 / 925:9339): зелёный овал 251×50 над доком. В макете —
+     слайдер; у нас три точки на линии (решение 2026-10-26): 9:00, 17:00, 23:00, выбранная — «солнце» как ручка слайдера. */
+  .timebar {
+    position: absolute; top: calc(684px + var(--db)); left: 50%; width: 251px; height: 50px; transform: translateX(-50%);
+    display: flex; justify-content: space-between; align-items: stretch; padding: 0 12px; cursor: default;
+    opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+  }
+  .timebar.open { opacity: 1; visibility: visible; }
+  .timebar.lg:active { background-color: rgba(38, 87, 70, 0.7); }   /* овал — не кнопка, нажатия на точки его не красят */
+  #screen.map-on .timebar, #screen.map-flight .timebar { visibility: hidden; }
+  .timebar .line { position: absolute; left: 30px; right: 30px; top: 20px; height: 2px; border-radius: 1px; background: #3fae7a; }
+  .timebar .pt {
+    position: relative; width: 52px; border: 0; padding: 0; background: none; cursor: pointer; font-family: inherit;
+    color: #b9d2c2; font-size: 10px; font-weight: 500; letter-spacing: 0.3px;
+  }
+  .timebar .pt i {
+    position: absolute; left: 50%; top: 21px; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+    background: #3fae7a; transition: transform .2s;
+  }
+  .timebar .pt svg { position: absolute; left: 50%; top: 21px; width: 28px; height: 28px; margin: -14px 0 0 -14px; display: none; }
+  .timebar .pt.on i { display: none; }
+  .timebar .pt.on svg { display: block; }
+  .timebar .pt b { position: absolute; left: 0; right: 0; bottom: 3px; font-weight: inherit; opacity: 0.7; }
+  .timebar .pt.on b { opacity: 1; }
   /* Карта района (Figma «1 - Объект - Район»): кадр вместо облёта, шапка и кнопки те же. Открывается 4-й кнопкой дока.
      Слой над облётом и 3D, под шапкой и доком; иконки САД/ЛОББИ на карте прячутся. */
   .mapview {
@@ -429,6 +453,12 @@
     <button class="b lg map" id="dockMap" aria-label="Карта"><i class="ic" style="--i: url(assets/tab-location.svg)"></i></button>
     <button class="b lg share" aria-label="Поделиться"><i class="ic" style="--i: url(assets/tab-share.svg)"></i></button>
   </div>
+  <div class="timebar lg" id="timebar" role="radiogroup" aria-label="Время суток">
+    <span class="line"></span>
+    <button class="pt" data-hour="9" role="radio" aria-label="9:00"><i></i><svg viewBox="0 0 28 28" aria-hidden="true"><g stroke="#4fd18e" stroke-width="2" stroke-linecap="round"><line x1="22.0" y1="14.0" x2="26.0" y2="14.0"/><line x1="19.7" y1="19.7" x2="22.5" y2="22.5"/><line x1="14.0" y1="22.0" x2="14.0" y2="26.0"/><line x1="8.3" y1="19.7" x2="5.5" y2="22.5"/><line x1="6.0" y1="14.0" x2="2.0" y2="14.0"/><line x1="8.3" y1="8.3" x2="5.5" y2="5.5"/><line x1="14.0" y1="6.0" x2="14.0" y2="2.0"/><line x1="19.7" y1="8.3" x2="22.5" y2="5.5"/></g><circle cx="14" cy="14" r="5" fill="#1d3f33" stroke="#4fd18e" stroke-width="2"/></svg><b>9:00</b></button>
+    <button class="pt" data-hour="17" role="radio" aria-label="17:00"><i></i><svg viewBox="0 0 28 28" aria-hidden="true"><g stroke="#4fd18e" stroke-width="2" stroke-linecap="round"><line x1="22.0" y1="14.0" x2="26.0" y2="14.0"/><line x1="19.7" y1="19.7" x2="22.5" y2="22.5"/><line x1="14.0" y1="22.0" x2="14.0" y2="26.0"/><line x1="8.3" y1="19.7" x2="5.5" y2="22.5"/><line x1="6.0" y1="14.0" x2="2.0" y2="14.0"/><line x1="8.3" y1="8.3" x2="5.5" y2="5.5"/><line x1="14.0" y1="6.0" x2="14.0" y2="2.0"/><line x1="19.7" y1="8.3" x2="22.5" y2="5.5"/></g><circle cx="14" cy="14" r="5" fill="#1d3f33" stroke="#4fd18e" stroke-width="2"/></svg><b>17:00</b></button>
+    <button class="pt" data-hour="23" role="radio" aria-label="23:00"><i></i><svg viewBox="0 0 28 28" aria-hidden="true"><g stroke="#4fd18e" stroke-width="2" stroke-linecap="round"><line x1="22.0" y1="14.0" x2="26.0" y2="14.0"/><line x1="19.7" y1="19.7" x2="22.5" y2="22.5"/><line x1="14.0" y1="22.0" x2="14.0" y2="26.0"/><line x1="8.3" y1="19.7" x2="5.5" y2="22.5"/><line x1="6.0" y1="14.0" x2="2.0" y2="14.0"/><line x1="8.3" y1="8.3" x2="5.5" y2="5.5"/><line x1="14.0" y1="6.0" x2="14.0" y2="2.0"/><line x1="19.7" y1="8.3" x2="22.5" y2="5.5"/></g><circle cx="14" cy="14" r="5" fill="#1d3f33" stroke="#4fd18e" stroke-width="2"/></svg><b>23:00</b></button>
+  </div>
 
   <div class="apt-popup" id="aptPopup">
     <div class="apt-card">
@@ -699,8 +729,11 @@
     screen.style.transform = `translate(-50%, -50%) scale(${scale})`;
     if (vpDebug) vpDebug.textContent = vpInfo;
     const dpr = Math.min(devicePixelRatio * scale, 3);
-    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    draw();
+    const cw = Math.round(W * dpr), ch = Math.round(H * dpr);
+    if (cw !== canvas.width || ch !== canvas.height) bmpGen++;   // распакованные кадры — под новый размер холста
+    canvas.width = cw; canvas.height = ch;
+    pump();
+    draw(true);   // смена размера холста его очищает — перерисовать, даже если кадр тот же
   }
 
   function showHint(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
@@ -709,59 +742,190 @@
   // Порядок: кадры рядом с текущим углом, затем грубый круг через 30° (облёт сразу крутится целиком — показывается
   // ближайший загруженный кадр), затем через 10°, затем остальные — от ближних к текущему углу к дальним.
   // Приоритет пересчитывается при повороте. Одновременно грузится LOAD_PARALLEL кадров.
-  // Телефон держит не больше KEEP.phone кадров (квадратный 4K-кадр в памяти ~59 МБ, 36 шт. ≈ прежние 48 кадров 4:3): дальние от текущего угла мелкие кадры
-  // выгружаются и при повороте грузятся снова (из кэша браузера). ?keep=N — свой предел.
+  // Загруженный кадр — сжатый WebP в памяти (Blob, ~1.3 МБ). Телефон держит не больше KEEP.phone кадров: дальние от
+  // текущего угла выгружаются и при повороте грузятся снова (из кэша браузера). ?keep=N — свой предел.
   // Рядом с кадром — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
   // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё.
   const LOAD_PARALLEL = 4;
   const KEEP = { phone: 36, desktop: Infinity };
   const NEAR_DEG = 10;        // «рядом с текущим углом» — грузится первым
-  const frames = new Map();   // угол облёта, ° -> Image
-  const masks = new Map();    // угол облёта, ° -> Image маски
-  const loading = new Map();  // угол -> [Image кадра, Image маски] в загрузке
-  const missing = new Set();  // углы, которых нет в наборе
-  let available = [];         // углы загруженных кадров
+  // Распаковка заранее. Распакованный кадр 3840×3840 — ~59 МБ (все 180 — ~10 ГБ): все держать нельзя, а распаковка
+  // при показе (drawImage из <img>, и даже createImageBitmap из <img> в Chrome) идёт в основном потоке, ~100 мс на
+  // кадр — рывки свайпа. Поэтому кадр распаковывается заранее из Blob (createImageBitmap — вне основного потока), сразу
+  // в масштабе холста и только видимой по горизонтали полосой (высота — вся, запас под подъём кадра). Распакованных —
+  // на DECODE_MB (?decodemb=N): ближние к углу (DECODE_NEAR_DEG), затем круг через 10°. На экран идёт только
+  // распакованный кадр: быстрый свайп показывает ближайший из них, остальные догружаются.
+  // Выбранная квартира (приближение) у стоящего облёта — из кадра в полном разрешении (sharp), тоже распакованного заранее.
+  const DECODE_MB = { phone: 250, desktop: 700 };
+  const DECODE_PARALLEL = 2;
+  const DECODE_NEAR_DEG = 20;
+  let bmpGen = 0;   // растёт при смене размера холста — распакованные кадры пересоздаются
+  // Набор кадров облёта: папка, шаг, свои кадры и маски. У каждого часа суток свой набор (см. «Время суток» ниже);
+  // cur — набор, который сейчас показывается.
+  function makeSet(dir, def) {
+    return { dir, def,
+             frames: new Map(),    // угол облёта, ° -> { blob, w, h } сжатый кадр и его размер
+             masks: new Map(),     // угол облёта, ° -> Image маски
+             loading: new Map(),   // угол -> { ctl: AbortController, mask: Image } в загрузке
+             missing: new Set(),   // углы, которых нет в наборе
+             bitmaps: new Map(),   // угол -> { bmp, gen, sx, sw, ky } распакованная полоса кадра (см. DECODE_MB)
+             decoding: new Map(),  // угол -> gen, распаковывается
+             sharp: null,          // { i, gen, bmp, sx, sw, ky } кадр в полном разрешении для приближения
+             available: [] };      // углы распакованных кадров — готовых к показу
+  }
+  function refreshAvailable(s) { s.available = [...s.bitmaps.keys()].sort((a, b) => a - b); }
+  function dropBitmap(s, i) {
+    const b = s.bitmaps.get(i);
+    if (b) { b.bmp.close(); s.bitmaps.delete(i); }
+  }
+  function dropSharp(s) { if (s.sharp) { s.sharp.bmp?.close(); s.sharp = null; } }
+  // Размер кадра из заголовка WebP: VP8X, VP8 (с потерями), VP8L (без потерь). Не WebP — null.
+  function webpSize(b) {
+    const tag = String.fromCharCode(...b.subarray(12, 16));
+    if (tag === 'VP8X') return [1 + (b[24] | b[25] << 8 | b[26] << 16), 1 + (b[27] | b[28] << 8 | b[29] << 16)];
+    if (tag === 'VP8 ') return [(b[26] | b[27] << 8) & 0x3fff, (b[28] | b[29] << 8) & 0x3fff];
+    if (tag === 'VP8L') {
+      const v = (b[21] | b[22] << 8 | b[23] << 16 | b[24] << 24) >>> 0;
+      return [1 + (v & 0x3fff), 1 + (v >>> 14 & 0x3fff)];
+    }
+    return null;
+  }
+  async function frameSize(blob) {
+    const size = webpSize(new Uint8Array(await blob.slice(0, 32).arrayBuffer()));
+    if (size) return size;
+    const b = await createImageBitmap(blob);
+    b.close();
+    return [b.width, b.height];
+  }
+  // Какая часть кадра f и в каком размере распаковывается: полоса шириной в видимую часть (при приближении ≥ 1 видно
+  // не больше) в масштабе холста (sharp — в полном разрешении).
+  function bitmapRect(f, sharp = false) {
+    const baseH = Math.min(f.h, f.w / ORBIT_BASE_ASPECT);
+    const k = Math.min(1, Math.max(canvas.width / f.w, canvas.height / baseH));
+    const sw = Math.min(f.w, Math.ceil(canvas.width / k) + 4);
+    const kr = sharp ? 1 : k;
+    return { sx: Math.floor((f.w - sw) / 2), sw, w: Math.round(sw * kr), h: Math.round(f.h * kr) };
+  }
+  function decodeFrame(f, r) {
+    return createImageBitmap(f.blob, r.sx, 0, r.sw, f.h, { resizeWidth: r.w, resizeHeight: r.h, resizeQuality: 'high' })
+      // Размер — у самой картинки: браузер без resizeWidth/Height распакует полосу 1:1.
+      .then(bmp => ({ bmp, sx: r.sx, sw: r.sw, ky: bmp.height / f.h }));
+  }
+  function decodePriority(i) {
+    const d = Math.abs(i - (angle % 360 + 360) % 360), dc = Math.min(d, 360 - d);
+    return (dc <= DECODE_NEAR_DEG ? 0 : i % 10 === 0 ? 1 : 2) * 1000 + dc;
+  }
+  function decode(s, i) {
+    const f = s.frames.get(i), gen = bmpGen;
+    s.decoding.set(i, gen);
+    decodeFrame(f, bitmapRect(f)).then(b => {
+      if (s.decoding.get(i) === gen) s.decoding.delete(i);
+      const old = s.bitmaps.get(i);
+      if (s !== cur || s.frames.get(i) !== f || (old && old.gen > gen)) { b.bmp.close(); return; }
+      if (old) old.bmp.close();
+      s.bitmaps.set(i, { ...b, gen });
+      refreshAvailable(s);
+      draw(); pump();
+    }, e => {
+      console.warn('orbit decode:', i, e);
+      if (s.decoding.get(i) === gen) s.decoding.delete(i);
+      if (s.frames.get(i) !== f) return;
+      unload(s, i); s.missing.add(i);
+      if (s === cur) pump();
+    });
+  }
+  // Кадр i в полном разрешении для приближения: готов — возвращается, нет — заказывается (по готовности — draw()).
+  function sharpFrame(s, i) {
+    const sh = s.sharp;
+    if (sh && sh.i === i && sh.gen === bmpGen) return sh.bmp ? sh : null;
+    if (sh && !sh.bmp) return null;   // распаковывается другой — дождаться, затем заказать этот
+    dropSharp(s);
+    const f = s.frames.get(i), mine = s.sharp = { i, gen: bmpGen, bmp: null };
+    decodeFrame(f, bitmapRect(f, true)).then(b => {
+      if (s.sharp !== mine) { b.bmp.close(); return; }
+      Object.assign(mine, b);
+      if (s === cur) draw();
+    }, () => { if (s.sharp === mine) s.sharp = null; });
+    return null;
+  }
+  function pumpDecode(s) {
+    if (!s.frames.size || !canvas.width) return;
+    const r = bitmapRect(s.frames.values().next().value);
+    const mb = +qs.get('decodemb') || (PHONE ? DECODE_MB.phone : DECODE_MB.desktop);
+    const max = Math.max(3, Math.floor(mb * 1048576 / (r.w * r.h * 4)));
+    const want = [...s.frames.keys()].sort((a, b) => decodePriority(a) - decodePriority(b)).slice(0, max);
+    const keep = new Set(want);
+    for (const i of [...s.bitmaps.keys()]) if (!keep.has(i) && i !== shown) dropBitmap(s, i);
+    for (const i of want) {
+      if (s.decoding.size >= DECODE_PARALLEL) break;
+      const b = s.bitmaps.get(i);
+      if ((!b || b.gen !== bmpGen) && !s.decoding.has(i)) decode(s, i);
+    }
+    refreshAvailable(s);
+  }
+  let cur = makeSet(DIR, set);
   function priority(i) {
     const d = Math.abs(i - (angle % 360 + 360) % 360), dc = Math.min(d, 360 - d);
     const level = dc <= NEAR_DEG ? 0 : i % 30 === 0 ? 1 : i % 10 === 0 ? 2 : 3;
     return level * 1000 + dc;
   }
+  function unload(s, i) {
+    const mask = s.masks.get(i);
+    if (mask) { mask.onload = mask.onerror = null; mask.src = ''; }
+    dropBitmap(s, i);
+    if (s.sharp?.i === i) dropSharp(s);
+    s.frames.delete(i); s.masks.delete(i);
+    refreshAvailable(s);
+  }
+  function abortLoading(s) {
+    for (const [, l] of s.loading) { l.ctl.abort(); l.mask.onload = l.mask.onerror = null; l.mask.src = ''; }
+    s.loading.clear();
+  }
   function pump() {
+    const s = cur, n = s.def.count, step = s.def.stepDeg;
     const keep = +qs.get('keep') || (PHONE ? KEEP.phone : KEEP.desktop);
     const wanted = [];
-    for (let k = 0; k < set.count; k++) if (!missing.has(k * set.stepDeg)) wanted.push(k * set.stepDeg);
+    for (let k = 0; k < n; k++) if (!s.missing.has(k * step)) wanted.push(k * step);
     wanted.sort((a, b) => priority(a) - priority(b));
     const want = new Set(wanted.slice(0, keep));
-    for (const i of frames.keys()) {   // выгрузка ненужных (текущий кадр не трогаем)
-      if (want.has(i) || i === shown) continue;
-      for (const img of [frames.get(i), masks.get(i)]) if (img) { img.onload = img.onerror = null; img.src = ''; }
-      frames.delete(i); masks.delete(i);
-      available = available.filter(a => a !== i);
+    for (const i of [...s.frames.keys()]) {   // выгрузка ненужных (текущий кадр не трогаем)
+      if (!want.has(i) && i !== shown) unload(s, i);
     }
     for (const i of want) {
-      if (loading.size >= LOAD_PARALLEL) break;
-      if (!frames.has(i) && !loading.has(i)) load(i);
+      if (s.loading.size >= LOAD_PARALLEL) break;
+      if (!s.frames.has(i) && !s.loading.has(i)) load(s, i);
     }
-    if (!loading.size && !available.length && missing.size === set.count) showHint(
+    pumpDecode(s);
+    if (!s.loading.size && !s.available.length && s.missing.size === n) showHint(
       location.protocol === 'file:'
         ? 'Кадры не грузятся с file:// — запустите serve.cmd и откройте http://localhost:8080'
-        : `Нет кадров в web/${DIR} — запустите sync.cmd ${SET}`);
+        : `Нет кадров в web/${s.dir} — запустите sync.cmd`);
   }
-  function load(i) {
-    const file = set.file(i / set.stepDeg);
-    const img = new Image(), mask = new Image();
-    loading.set(i, [img, mask]);
-    img.onload = () => {
-      loading.delete(i);
-      frames.set(i, img);
-      available = [...frames.keys()].sort((a, b) => a - b);
-      draw();
-      pump();
+  function load(s, i) {
+    const file = s.def.file(i / s.def.stepDeg);
+    const l = { ctl: new AbortController(), mask: new Image() }, mask = l.mask;
+    s.loading.set(i, l);
+    const mine = () => s.loading.get(i) === l;
+    fetch(s.dir + file, { signal: l.ctl.signal })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+      .then(async blob => {
+        const [w, h] = await frameSize(blob);
+        if (!mine()) return;
+        s.loading.delete(i);
+        s.frames.set(i, { blob, w, h });
+        if (s === cur) pump();
+      })
+      .catch(e => {
+        if (e.name === 'AbortError' || !mine()) return;
+        s.loading.delete(i); s.missing.add(i); mask.src = '';
+        if (s === cur) pump();
+      });
+    mask.onload = () => {
+      if (!s.frames.has(i) && !mine()) return;
+      s.masks.set(i, mask);
+      if (s === cur && i === shown) draw();
     };
-    img.onerror = () => { loading.delete(i); missing.add(i); mask.src = ''; pump(); };
-    img.src = DIR + file;
-    mask.onload = () => { if (!frames.has(i)) return; masks.set(i, mask); if (i === shown) draw(); };
-    mask.src = DIR + 'mask/' + file;
+    mask.src = s.dir + 'mask/' + file;
   }
 
   // --- Отрисовка: ближайший доступный кадр к текущему углу, обрезка основного кадра 4:3 по центру (cover) ---
@@ -779,8 +943,8 @@
   pump();
   function nearestFrame() {
     const want = (angle % 360 + 360) % 360;
-    let best = available[0], bestD = Infinity;
-    for (const i of available) {
+    let best = cur.available[0], bestD = Infinity;
+    for (const i of cur.available) {
       const d = Math.abs(i - want), dc = Math.min(d, 360 - d);
       if (dc < bestD) { bestD = dc; best = i; }
     }
@@ -788,29 +952,42 @@
   }
   // Показывается ближайший к углу кадр набора, без перетекания между соседними (решение пользователя 2026-10-21:
   // смешивание двух кадров выглядело размытием).
-  function draw() {
-    if (!available.length) return;
+  // Холст и 3D-слой перерисовываются, только когда меняется картинка: кадр, его положение, размер холста или маска
+  // (пока угол догоняет палец, кадр облёта обычно тот же). force — перерисовать всё равно (fit() очищает холст).
+  let drawn = null;
+  function draw(force = false) {
+    if (!cur.available.length) return;   // новый набор ещё грузится — на экране остаётся прежний кадр
     const i = nearestFrame();
     shown = i;
-    const bucket = Math.round(angle / set.stepDeg);   // повернули на шаг набора — пересчитать очередь загрузки
+    const bucket = Math.round(angle / cur.def.stepDeg);   // повернули на шаг набора — пересчитать очередь загрузки
     if (bucket !== pumpedAt) { pumpedAt = bucket; pump(); }
-    const img = frames.get(i);
-    const baseH = Math.min(img.naturalHeight, img.naturalWidth / ORBIT_BASE_ASPECT);   // основной кадр, px картинки
-    const k = Math.max(canvas.width / img.naturalWidth, canvas.height / baseH) * view.zoom;
-    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    const f = cur.frames.get(i);
+    // Источник — распакованная полоса кадра (bmp; sx, sw — её место в кадре, ky — её масштаб). У приближенного
+    // стоящего облёта — кадр в полном разрешении, когда он распакуется (до того — обычный).
+    if (view.zoom <= 1.01) dropSharp(cur);
+    const sharp = view.zoom > 1.01 && !tween && !dragging && angle === target && sharpFrame(cur, i);
+    const src = sharp || cur.bitmaps.get(i);
+    const mask = cur.masks.get(i) || null;
+    const baseH = Math.min(f.h, f.w / ORBIT_BASE_ASPECT);   // основной кадр, px картинки
+    const k = Math.max(canvas.width / f.w, canvas.height / baseH) * view.zoom;
+    const w = f.w * k, h = f.h * k;
     // Кадр сдвигается вверх на lift высоты основного кадра. Верхний край картинки не открываем; нижний может открыться
     // (дом поднят выше, чем позволяет запас) — полосу под кадром закрывает его зеркальное отражение с затемнением.
     const y = Math.min(0, (canvas.height - h) / 2 - view.lift * baseH * k);
     const x = (canvas.width - w) / 2;
+    const key = [src.bmp, mask, x, y, w, canvas.width, canvas.height];
+    if (!force && drawn && key.every((v, n) => v === drawn[n])) return;
+    drawn = key;
     const gap = canvas.height - (y + h);
+    const bh = src.bmp.height, bx = x + src.sx * k, bw = src.sw * k;   // полоса источника на холсте
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, x, y, w, h);
+    ctx.drawImage(src.bmp, bx, y, bw, h);
     if (gap > 0) {
-      const src = Math.min(img.naturalHeight, gap / k);   // столько строк снизу кадра отражаем
+      const rows = Math.min(f.h, gap / k);   // столько строк снизу кадра отражаем
       ctx.save();
       ctx.translate(0, y + h);
       ctx.scale(1, -1);
-      ctx.drawImage(img, 0, img.naturalHeight - src, img.naturalWidth, src, x, -src * k, w, src * k);
+      ctx.drawImage(src.bmp, 0, bh - rows * src.ky, src.bmp.width, rows * src.ky, bx, -rows * k, bw, rows * k);
       ctx.restore();
       const g = ctx.createLinearGradient(0, y + h - gap * 0.3, 0, canvas.height);
       g.addColorStop(0, 'rgba(0,0,0,0)');
@@ -821,7 +998,7 @@
     }
     // 3D-слой (overlay.js) рисуется в той же камере и с той же обрезкой: полный кадр w×h, его угол в (x, y).
     window.orbitFrame = { angle: i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y, designW: W,
-                          mask: masks.get(i) || null };
+                          mask: cur.masks.get(i) || null };
     screen.dispatchEvent(new Event('orbitframe'));
   }
 
@@ -859,7 +1036,7 @@
   const up = () => {
     if (!dragging) return;
     dragging = false; canvas.classList.remove('dragging');
-    target = Math.round(target / set.stepDeg) * set.stepDeg;
+    target = Math.round(target / cur.def.stepDeg) * cur.def.stepDeg;
   };
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', up);
@@ -876,6 +1053,52 @@
     stepView(now);
     requestAnimationFrame(tick);
   })(performance.now());
+
+  // --- Время суток: кнопка дня/ночи (первая в доке) открывает овал с тремя точками (решение 2026-10-26) ---
+  // 9:00 — основной облёт (HQ / ?set=LQ), 17:00 и 23:00 — свои наборы (ue/orbit_render.py, HOURS, Docs/ORBIT.md):
+  // HQ_<час> (180 кадров через 2°), пока его нет — тест LQ_<час> (24 через 15°). Угол облёта не меняется —
+  // показывается ближайший к нему кадр выбранного часа. Пролёты сняты в 9:00: перед пролётом час возвращается к 9:00.
+  // ?hour=17 — сразу 17:00.
+  const timebar = document.getElementById('timebar');
+  const lightBtn = document.querySelector('.dock .light');
+  const timeSets = { 9: cur };
+  let hour = 9, hourReq = 0;
+  async function hourSet(h) {
+    if (!timeSets[h]) {
+      let s = makeSet(`renders/360_Test/${SET === 'LQ' ? 'LQ' : 'HQ'}_${h}/`, SET === 'LQ' ? SETS.LQ : SETS.HQ);
+      if (SET !== 'LQ' && !await fetch(s.dir + s.def.file(0), { method: 'HEAD' }).then(r => r.ok, () => false)) {
+        s = makeSet(`renders/360_Test/LQ_${h}/`, SETS.LQ);   // финального набора часа ещё нет — тестовый
+      }
+      timeSets[h] ||= s;
+    }
+    return timeSets[h];
+  }
+  async function setHour(h) {
+    const req = ++hourReq;
+    hour = h;
+    for (const b of timebar.querySelectorAll('.pt')) {
+      const on = +b.dataset.hour === h;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', on);
+    }
+    const s = await hourSet(h);
+    if (req !== hourReq || s === cur) return;
+    if (PHONE) {   // телефон: в памяти — кадры одного набора (прежний кадр остаётся на холсте, пока не придёт новый)
+      abortLoading(cur);
+      for (const i of [...cur.frames.keys()]) unload(cur, i);
+    } else {       // ПК: сжатые кадры прежнего набора остаются (быстрый возврат), распакованные — освобождаются
+      for (const i of [...cur.bitmaps.keys()]) dropBitmap(cur, i);
+      dropSharp(cur);
+      refreshAvailable(cur);
+    }
+    cur = s; shown = -1;
+    pumpedAt = Math.round(angle / cur.def.stepDeg);
+    pump();
+    draw();
+  }
+  for (const b of timebar.querySelectorAll('.pt')) b.onclick = () => setHour(+b.dataset.hour);
+  lightBtn.onclick = () => lightBtn.classList.toggle('on', timebar.classList.toggle('open'));
+  setHour([9, 17, 23].includes(+qs.get('hour')) ? +qs.get('hour') : 9);
 
   // --- Бургер-меню ---
   const menu = document.getElementById('menu');
@@ -1553,6 +1776,7 @@
       screen.dispatchEvent(new Event('apartmentclear'));
       setMap(false);
       await waitFor(() => !tween, 1000);
+      if (hour !== 9) await setHour(9);   // видео пролётов — в 9:00
       await rotateTo(f.angle);
       await waitFor(() => shown === f.angle, 3000);
       if (f === FLIGHTS.map) screen.classList.add('map-flight');
