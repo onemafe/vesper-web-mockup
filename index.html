@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/app-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Inter:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Inter:wght@500;600&display=swap" rel="stylesheet">
 <style>
   /* Макет Figma: файл rXyl4vfPbiSi6dbmNmUYxK, фреймы 925:7868 (общий вид) и 925:7950 (бургер-меню). Экран 430×932. */
   :root {
@@ -24,6 +24,9 @@
     --btn-pick-text: #102318;
     --page-bg: #2c2c2c;
   }
+  /* Cera Pro — шрифт приложения UE (CeraPro-Font: Regular, Medium) и макета Figma. */
+  @font-face { font-family: "Cera Pro"; font-weight: 400; font-display: swap; src: url(assets/fonts/cera-pro-regular.ttf) format("truetype"); }
+  @font-face { font-family: "Cera Pro"; font-weight: 500; font-display: swap; src: url(assets/fonts/cera-pro-medium.ttf) format("truetype"); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--page-bg); overflow: hidden; }
   /* Телефон: страница на весь экран (100lvh — и под панелями Safari), фон чёрный — если где-то и проглянет, не серый. */
@@ -41,6 +44,9 @@
   }
   #pano { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
   #pano.dragging { cursor: grabbing; }
+  /* Облёт в движении — облегчённый кадр в его разрешении, растянут на экран (draw() в скрипте); события — в #pano. */
+  #panoLite { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
+  #panoLite.on { display: block; }
   /* 3D поверх кадра (подсветки квартир), события проходят насквозь в #pano. */
   #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
@@ -156,9 +162,7 @@
   /* Кадр часа поверх облёта (под 3D-слоем): та же обрезка, что у кадра облёта, — по событию orbitframe. */
   #timeShot { position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: none; }
   #timeShot.on { display: block; }
-  #timeShot div { position: absolute; }
-  #timeShot img { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
-  #timeShot img.on { visibility: visible; }
+  #timeShot canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   /* Карта района (Figma «1 - Объект - Район»): кадр вместо облёта, шапка и кнопки те же. Открывается 4-й кнопкой дока.
      Слой над облётом и 3D, под шапкой и доком; иконки САД/ЛОББИ на карте прячутся. */
   .mapview {
@@ -171,32 +175,225 @@
                       color: #b9d2c2; font-size: 14px; pointer-events: none; }
   #screen.map-on .place, #screen.map-on .hint, #screen.map-flight .place, #screen.map-flight .hint { visibility: hidden; }
 
-  /* Попап выбранной квартиры (фрейм 925:8781): карточка 925:8809 и крестик 925:8807. Стрелок поворота облёта нет
-     (решение пользователя 2026-10-21: при выбранной квартире не нужны). */
+  /* Попап выбранной квартиры. Стрелок поворота облёта нет (решение пользователя 2026-10-21: при выбранной квартире
+     не нужны). Телефон — компоновка макета 925:8781 (карточка 925:8809, 342×283), а стекло, шрифты и кнопки — как у окна
+     фильтров 925:10331 (решение 2026-10-27). ПК — копия WBP_ApartmentWindow приложения UE (ниже, #screen.wide). */
   .apt-popup { opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s; }
   .apt-popup.open { opacity: 1; visibility: visible; }
   .apt-card {
     position: absolute; left: calc(44px + var(--dx)); top: calc(410px + var(--db)); width: 342px; height: 283px;
-    border-radius: 10px; overflow: hidden; background: var(--green-70);
-    color: #adadad; font-size: 14px; line-height: 1; text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; overflow: hidden; background: rgba(38, 87, 58, 0.5);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    font-family: Inter, Manrope, system-ui, sans-serif; font-weight: 500; font-size: 14px; line-height: 1.2; color: #b9d2c2;
   }
-  /* Лист плана застройщика (Plans/<id>.jpg) — кроп как в макете: план и схема этажа, без полей листа. */
-  .apt-plan { position: absolute; left: -7px; top: 0; width: 365px; height: 170px; overflow: hidden; background: #fff; }
-  .apt-plan img { position: absolute; left: -5.05%; top: -44.33%; width: 121.59%; height: 184.7%; max-width: none; }
-  .apt-card .num   { position: absolute; left: 20px; top: 175px; font-weight: 500; }
-  .apt-card .kind  { position: absolute; left: 21px; top: 200px; }
+  /* .pc — ПК, .ph — телефон; у телефона два варианта попапа (кнопка «Было / Стало» на ПК при «Мобайл», ?popup=old):
+     .pn — новый (по умолчанию), .po — прежний по макету Figma (screen data-popup="old"). */
+  #screen.wide .apt-card :is(.ph, .pn, .po), #screen:not(.wide) .apt-card .pc { display: none; }
+  #screen:not(.wide)[data-popup="old"] .apt-card .pn, #screen:not(.wide):not([data-popup="old"]) .apt-card .po,
+  #screen:not(.wide):not([data-popup="old"]) #aptPlan { display: none; }
+  /* Лист плана застройщика (Plans/<id>.jpg, все 1400×990) — целиком, вписан в окно по центру на белой подложке, как в
+     WBP_ApartmentWindow UE (решение 2026-10-27; раньше был кроп без полей листа). */
+  .apt-plan { position: absolute; left: 0; top: 0; width: 100%; height: 170px; overflow: hidden; background: #fff; }
+  .apt-plan img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .apt-card .num   { position: absolute; left: 20px; top: 177px; font-size: 15px; color: #fff; }
+  .apt-card .kind  { position: absolute; left: 20px; top: 200px; }
   .apt-card .floor { position: absolute; left: 159px; top: 200px; }
-  .apt-card .heart { position: absolute; left: 293px; top: 200px; width: 29px; height: 29px; }
-  .apt-buttons { position: absolute; left: 20px; top: 243px; display: flex; gap: 14px; }
-  /* ВИДЫ — вид из окна (pano.js openViews), ПЛАН — 3D-план, ГАЛЕРЕЯ — пока без действий. */
+  .apt-card .heart { position: absolute; left: 293px; top: 200px; width: 29px; height: 29px; cursor: pointer; }
+  /* ВИДЫ — вид из окна (pano.js openViews), ПЛАН — 3D-план, ГАЛЕРЕЯ — пока без действий.
+     Телефон — как вкладки окна фильтров: белые 10 %, скругление 5, Inter 15. */
+  .apt-buttons { position: absolute; left: 20px; right: 20px; top: 243px; display: flex; gap: 10px; }
   .apt-buttons span {
-    height: 30px; border-radius: 5px; background: #104b37;
-    display: flex; align-items: center; justify-content: center;
-    color: #b9d2c2; font-size: 16px;
+    flex: 1 1 0; height: 30px; border-radius: 5px; background: rgba(255, 255, 255, 0.1);
+    display: flex; align-items: center; justify-content: center; font-size: 15px; transition: background-color .2s;
   }
+  .apt-buttons i { font-style: normal; }
+  .apt-buttons span:active { background: #57967a; color: #1a3a2b; }
+  #screen:not(.wide) .apt-buttons span { box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  #screen:not(.wide) .apt-buttons span::before { display: none; }
   .apt-nav { position: absolute; top: calc(705px + var(--db)); width: 45px; height: 45px; }
   .apt-nav.close { left: calc(193px + var(--dx)); }
   .apt-nav.close img { display: block; width: 12.6px; height: 12.6px; margin: auto; }
+
+  /* ПК (#screen.wide) — WBP_ApartmentWindow приложения UE, размеры в единицах UMG (шрифт pt × 4/3 = px), цвета UE
+     переведены из линейных в sRGB: карточка 340×435, BackgroundBlur 10 + заливка #265647 70 %, скругление 10;
+     план 340×210; данные — отступ 25 слева и 20 сверху: номер CeraPro Medium 11.25 pt → 15 px, через 25 — спальни,
+     площадь, этаж, цена (Regular 10.5 pt → 14 px); жирный только номер, строки — светлые #B9D2C2 без разрядки
+     (решение 2026-10-27); сердце 29×29 — 5 сверху, 25 справа; кнопки — ряд высотой 46 в 18 от низа, поля 20 по краям
+     и 14 между, текст Regular 12 pt → 16 px; вид кнопок — не как в UE, а стекло веба .lg (решение 2026-10-27). Рамка T_Apartment_Glass (почти прозрачная, блики на углах) — светлым ободком, как у .lg.
+     Экран делится на трети: карточка — по центру третьей, по высоте — по центру; крестик под ней (решение 2026-10-27). */
+  #screen.wide .apt-card {
+    left: min(calc(500% / 6 - 170px), calc(100% - 364px)); top: 240px; width: 340px; height: 435px;
+    border: 0; border-radius: 10px; background: rgba(38, 86, 71, 0.7);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 0 0 0.75px rgba(185, 210, 194, 0.28), inset 1.2px 1.2px 1px -0.5px rgba(255, 255, 255, 0.26),
+                inset -1.2px -1.2px 1px -0.5px rgba(255, 255, 255, 0.16);
+    font-family: "Cera Pro", Manrope, system-ui, sans-serif; font-weight: 400; line-height: 17.5px;
+    color: #fff; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  #screen.wide .apt-plan { height: 210px; }
+  #screen.wide .apt-card .num   { left: 25px; top: 230px; font-weight: 500; line-height: 18px; letter-spacing: 0.5px; }
+  #screen.wide .apt-card .kind  { left: 25px; top: 273px; }
+  #screen.wide .apt-card .floor { left: 25px; top: 308px; }
+  #screen.wide .apt-card .heart { left: auto; right: 25px; top: 235px; }
+  #screen.wide .apt-buttons { left: 20px; right: 20px; top: auto; bottom: 18px; gap: 14px; }
+  #screen.wide .apt-card .kind, #screen.wide .apt-card .floor { color: #b9d2c2; letter-spacing: 0; }
+  #screen.wide .apt-buttons span {
+    height: 46px; border-radius: 200px; background-color: rgba(38, 87, 70, 0.7); color: #b9d2c2; font-size: 16px;
+  }
+  #screen.wide .apt-buttons span:hover { background-color: rgba(185, 210, 194, 0.7); color: #265746; }
+  #screen.wide .apt-buttons span:active { background-color: rgba(38, 87, 70, 0.4); color: #b9d2c2; }
+  #screen.wide .apt-nav.close { left: min(calc(500% / 6 - 22.5px), calc(100% - 216.5px)); top: 687px; }
+
+  /* Панель квартир: вкладки «Фильтры», «Список» (отфильтрованные), «Избранное». ПК — слева, открыта весь режим
+     «квартиры», вид как в приложении UE (ползунки). Телефон — окно Figma 925:10331 по центру, открывается кнопкой
+     фильтра в шапке (925:10221, есть только в режиме «квартиры»), поля «от / до» вместо ползунков. */
+  .apt-panel {
+    position: absolute; left: 24px; top: 150px; width: 380px; height: 600px; display: none; flex-direction: column;
+    border-radius: 10px; background: var(--green-70); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: #b9d2c2; font-size: 12px; line-height: 1; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  #screen.wide.apts-on .apt-panel { display: flex; }
+  #screen.wide .apt-panel { left: max(24px, calc(100% / 6 - 190px)); }   /* центр первой трети ширины (см. .apt-card) */
+  /* ПК — как WBP_HomeList приложения UE: везде Cera Pro Regular; вкладки и «Сбросить» — 12 pt, остальное — 10.5 pt
+     (в вебе 12 и 10.5 px); подписи строк #B9D2C2, вкладки и кнопки-надписи #B6D5B9, кружки и ручки — белый текст. */
+  #screen.wide .apt-panel { font-family: "Cera Pro", Manrope, system-ui, sans-serif; font-weight: 400; font-size: 10.5px; }
+  #screen.wide .ap-tabs button, #screen.wide .ap-tabs button.on, #screen.wide .ap-actions button { color: #b6d5b9; }
+  #screen.wide .ap-chips button { border-color: #57967a; color: #b6d5b9; }
+  #screen.wide .ap-chips[data-key] button { color: #fff; }
+  #screen.wide .ap-chips button.on { background: #57967a; border-color: #57967a; color: #fff; }
+  #screen.map-on .apt-panel, #screen.map-flight .apt-panel { display: none !important; }
+  .ap-tabs { display: flex; gap: 6px; padding: 10px; }
+  .ap-tabs button {
+    flex: 1 1 auto; height: 36px; border-radius: 6px; padding: 0 10px; font-size: 12px; letter-spacing: 0.4px;
+    display: flex; align-items: center; justify-content: center; gap: 6px; text-transform: uppercase; white-space: nowrap;
+  }
+  .ap-tabs .ic { width: 16px; height: 16px; }
+  .ap-tabs b { font-weight: inherit; }
+  .ap-tabs button.on { background-color: rgba(87, 150, 122, 0.85); color: #fff; cursor: default; }
+  .ap-body { display: none; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 6px 22px 16px; }
+  .ap-body::-webkit-scrollbar { display: none; }
+  .ap-body.on { display: block; }
+  .ap-row { display: flex; align-items: center; min-height: 48px; }
+  .ap-row > span:first-child { width: 130px; flex: none; }
+  .ap-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ap-chips button, .ap-toggle {
+    height: 32px; min-width: 32px; padding: 0 10px; border-radius: 16px; cursor: pointer;
+    border: 1px solid rgba(185, 210, 194, 0.55); background: none; color: inherit;
+    font: inherit; letter-spacing: inherit; text-transform: uppercase;
+  }
+  .ap-chips button.on { background: #b9d2c2; border-color: #b9d2c2; color: #265746; }
+  /* Тип и особенности — в фиде застройщика данных нет: показаны как в приложении, но не нажимаются. */
+  .ap-chips.inert button { cursor: default; opacity: 0.55; }
+  .ap-toggle { margin-left: auto; padding: 0; }
+  /* Включено — как в UE: залитый светло-зелёный круг с тонкой белой галочкой. */
+  .ap-toggle.on {
+    background: #b9d2c2 center / 16px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8.5l4 3.5 8-8' fill='none' stroke='%23fff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    border-color: #b9d2c2;
+  }
+  /* Ползунок диапазона: линия и две ручки со значением внутри (как в приложении UE). */
+  .ap-range { position: relative; flex: 1; height: 36px; touch-action: none; }
+  .ap-range .track { position: absolute; left: 17px; right: 17px; top: 17.5px; height: 1px; background: rgba(185, 210, 194, 0.6); }
+  .ap-range .fill { position: absolute; top: 17px; height: 2px; background: #b9d2c2; }
+  .ap-range .thumb {
+    position: absolute; top: 1px; width: 34px; height: 34px; margin-left: -17px; border-radius: 50%; cursor: grab;
+    display: flex; align-items: center; justify-content: center; background: #57967a; color: #fff;
+    font-weight: inherit; letter-spacing: 0; white-space: nowrap;
+  }
+  .ap-actions { display: flex; justify-content: center; gap: 16px; padding: 0 22px 20px; }
+  .apt-panel:not([data-tab="filters"]) .ap-actions { display: none; }
+  .ap-actions button { height: 36px; padding: 0 22px; border-radius: 6px; font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .ap-range .num { display: none; }
+  #screen.wide .apt-panel .ph, #screen:not(.wide) .apt-panel .pc { display: none; }
+  .ap-row i { font-style: normal; }
+  .ap-list button {
+    display: grid; grid-template-columns: 82px 34px 1fr 48px 62px; align-items: center; gap: 6px; width: 100%;
+    height: 40px; padding: 0 8px; border: 0; border-bottom: 1px solid rgba(185, 210, 194, 0.15); border-radius: 4px;
+    background: none; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer;
+  }
+  .ap-list button:hover { background: rgba(185, 210, 194, 0.08); }
+  .ap-list button.on { background: rgba(185, 210, 194, 0.22); color: #fff; }
+  .ap-list button :last-child { text-align: right; }
+  .ap-list .empty { padding: 20px 0; text-align: center; opacity: 0.7; }
+  /* Кнопка фильтра в шапке (925:10221) — только телефон, только в режиме «квартиры»; на ПК панель и так открыта. */
+  .header .ap-open { visibility: hidden; }
+  #screen:not(.wide).apts-on .header .ap-open { visibility: visible; }
+  #screen.map-on .header .ap-open, #screen.map-flight .header .ap-open { visibility: hidden; }
+  /* Телефон — окно 925:10331: 362×591, стекло rgba(38,87,58,.5) с размытием 20, рамка белая 15 %, скругление 16. */
+  #screen:not(.wide).apts-on.ap-shown .apt-panel { display: flex; }
+  #screen:not(.wide).ap-shown .apt-popup { visibility: hidden; opacity: 0; }   /* карточку закрывает окно фильтров */
+  #screen:not(.wide) .apt-panel {
+    left: calc(34px + var(--dx)); top: calc(138px + var(--dt)); width: 362px; height: 591px; padding: 23px 0 23px;
+    border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; background: rgba(38, 87, 58, 0.5);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    font-family: Inter, Manrope, system-ui, sans-serif; font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: none;
+  }
+  #screen:not(.wide) .ap-tabs { gap: 10px; padding: 0 23px; }
+  #screen:not(.wide) .ap-tabs button {
+    flex: 1 1 0; height: 45px; border-radius: 5px; padding: 0; gap: 2px; box-shadow: none; backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.1); color: #b9d2c2; font-size: 15px; font-weight: 500; letter-spacing: 0; text-transform: none;
+  }
+  #screen:not(.wide) .ap-tabs button::before { display: none; }
+  #screen:not(.wide) .ap-tabs button.on { background: #57967a; color: #1a3a2b; }
+  #screen:not(.wide) .ap-tabs .ic { display: none; }
+  #screen:not(.wide) .ap-tabs img { width: 18px; height: 18px; }
+  #screen:not(.wide) .ap-body { padding: 28px 23px 8px; }
+  #screen:not(.wide) .ap-row { gap: 16px; min-height: 45px; margin-bottom: 10px; color: #fff; }
+  #screen:not(.wide) .ap-row > span:first-child { width: 103px; padding-left: 8px; white-space: nowrap; }
+  #screen:not(.wide) .ap-chips { gap: 12px; flex: 1; }
+  #screen:not(.wide) .ap-chips button {
+    height: 40px; min-width: 40px; padding: 0 12px; border: 1.5px solid #57967a; border-radius: 30px;
+    font-family: "Cera Pro", Manrope, system-ui, sans-serif; font-weight: 400; font-size: 14px; color: #b9d2c2;
+  }
+  #screen:not(.wide) .ap-chips[data-key] { gap: 11px; flex-wrap: nowrap; }   /* 4 кружка в строку (в макете их 3 через 13) */
+  #screen:not(.wide) .ap-chips[data-key] button { padding: 0; color: #fff; }
+  #screen:not(.wide) .ap-chips button.on { background: #57967a; color: #1a3a2b; }
+  #screen:not(.wide) .ap-chips.inert button { opacity: 1; }
+  #screen:not(.wide) .ap-range { display: flex; gap: 12px; height: auto; flex: none; width: 195px; }
+  #screen:not(.wide) .ap-range > :not(.num) { display: none; }
+  #screen:not(.wide) .ap-range .num {
+    display: flex; align-items: center; width: 92px; height: 41px; padding: 0 16px; border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .ap-range .num input {
+    width: 100%; min-width: 0; border: 0; padding: 0; outline: none; background: none; color: #fff;
+    font: inherit; font-size: 16px;   /* 16 px — iOS не приближает страницу при вводе */
+  }
+  .ap-range .num input::placeholder { color: #fff; opacity: 1; }
+  .ap-range .num u { text-decoration: none; }
+  #screen:not(.wide) .ap-actions { gap: 16px; padding: 12px 23px 0; }
+  #screen:not(.wide) .ap-actions button {
+    flex: 1; height: 45px; border-radius: 200px; padding: 0 25px; text-transform: none; letter-spacing: 0;
+    font-family: "Cera Pro", Manrope, system-ui, sans-serif; font-weight: 400; font-size: 16px;
+  }
+  #screen:not(.wide) .ap-list button { grid-template-columns: 74px 26px 1fr 40px 62px; font-size: 13px; color: #fff; }
+
+  /* Телефон, прежний попап (?popup=old): карточка ниже (над доком), крестик — в её правом верхнем углу (решение 2026-10-27). */
+  #screen:not(.wide)[data-popup="old"] .apt-card { top: calc(471px + var(--db)); }
+  #screen:not(.wide)[data-popup="old"] .apt-nav.close { left: calc(342px + var(--dx)); top: calc(479px + var(--db)); width: 36px; height: 36px; }
+  /* Телефон, новый попап (черновик 2026-10-27): карточка 342×194 над доком, низ там же, где у прежней. Справа — план
+     на всю высоту карточки (белое поле 182×194, в нём квадрат Plans_Square → data/apartments/plans_sq), крестик — в его
+     правом верхнем углу, сердце — в правом нижнем. Слева столбик шириной 136: номер, статус, комнаты · площадь,
+     этаж · цена, внизу кнопки друг под другом. Без жирного. */
+  #screen:not(.wide):not([data-popup="old"]) .apt-card {
+    top: calc(560px + var(--db)); height: 194px; font-weight: 400; font-size: 13px;
+  }
+  #screen:not(.wide):not([data-popup="old"]) .apt-plan { left: 160px; width: auto; right: 0; top: 0; height: 100%; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-card .num { left: 12px; top: 12px; width: 136px; line-height: 18px; }
+  #screen:not(.wide) .apt-card .num small { display: block; font-size: 12px; line-height: 15px; color: #b9d2c2; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-card .kind {
+    left: 12px; top: 55px; width: 136px; line-height: 17px; white-space: nowrap;
+  }
+  #screen:not(.wide):not([data-popup="old"]) .apt-card .floor {
+    left: 12px; top: 72px; width: 136px; line-height: 17px; white-space: nowrap;
+  }
+  #screen:not(.wide):not([data-popup="old"]) .apt-card .heart { left: auto; right: 12px; top: 153px; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-buttons {
+    left: 12px; right: 194px; top: auto; bottom: 12px; flex-direction: column; gap: 6px;
+  }
+  #screen:not(.wide):not([data-popup="old"]) .apt-buttons span { flex: none; height: 24px; font-size: 14px; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-nav.close {
+    left: calc(342px + var(--dx)); top: calc(568px + var(--db)); width: 36px; height: 36px;
+  }
 
   /* 3D-план квартиры на весь экран (кнопка ПЛАН попапа). Макета нет: только крестик, как у меню. */
   .plan3d {
@@ -395,6 +592,72 @@
   .menu-cta .pick { background: var(--btn-pick); color: var(--btn-pick-text); }
   .menu-cta .off { cursor: default; }   /* неактивная: вид как в макете, без действия */
 
+  /* Меню на ПК вместо бургера (решение 2026-10-27, два варианта на выбор): кнопка «Меню: …» рядом с «ПК / Мобайл»
+     переключает верх / слева / бургер (?nav=top|side|burger). top — пункты меню строкой вверху, под ней размытие,
+     к низу сходит на нет; side — столбик круглых кнопок-иконок слева (как в почте), при наведении ширится и показывает
+     подписи, размытие сходит на нет вправо. Пункты нажимают ссылки бургер-меню (#menu) — действия те же. */
+  .pcnav { display: none; position: absolute; z-index: 3; color: #b9d2c2; }   /* над панорамой и «О проекте» */
+  #screen.wide[data-nav="top"] .pcnav.top, #screen.wide[data-nav="side"] .pcnav.side { display: flex; }
+  #screen.wide:not([data-nav="burger"]) .header [id$="urger"] { visibility: hidden; }
+  #screen.wide[data-nav="top"] .header .logo, #screen.wide[data-nav="top"] .header .lang { visibility: hidden; }
+  .pcnav::before {
+    content: ''; position: absolute; z-index: -1; pointer-events: none;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .pcnav button { font-family: inherit; font-size: 14px; font-weight: 500; letter-spacing: 0.5px; white-space: nowrap; cursor: pointer; }
+  .pcnav .cta { height: 40px; padding: 0 18px; font-size: 13px; border: 0; border-radius: 100px; font-family: Inter, system-ui, sans-serif; font-weight: 600; letter-spacing: 0; }
+  .pcnav .call { background: var(--btn-call); color: #fff; }
+  .pcnav .pick { background: var(--btn-pick); color: var(--btn-pick-text); }
+  /* Верх: у самого верха логотип по центру, по бокам от него по три пункта, справа кнопки (той же высоты 40);
+     шапка экранов и всё под ней — ниже на --dt (fit, NAV_TOP_DT). На стартовом экране «Выбрать квартиру» только в строке. */
+  .pcnav.top { left: 0; right: 0; top: 0; height: 130px; padding: 16px 24px 0; justify-content: flex-end; align-items: flex-start; pointer-events: none; }
+  .pcnav.top > * { pointer-events: auto; }
+  .pcnav.top::before {
+    inset: 0; background: linear-gradient(rgba(16, 44, 35, 0.6), rgba(16, 44, 35, 0));
+    -webkit-mask: linear-gradient(#000 45%, transparent); mask: linear-gradient(#000 45%, transparent);
+  }
+  .pcnav.top .logo { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); }
+  .pcnav.top nav { position: absolute; top: 16px; display: flex; }
+  /* От логотипа (половина — 101) — зазор до 80; на узком окне меньше, чтобы правые пункты не наезжали на кнопки
+     (780 ≈ правые кнопки с отступом 342 + половина логотипа 101 + правые пункты 337). */
+  .pcnav.top nav.l { right: calc(50% + 101px + clamp(12px, 50% - 780px, 80px)); }
+  .pcnav.top nav.r { left: calc(50% + 101px + clamp(12px, 50% - 780px, 80px)); }
+  .pcnav.top .lang { position: absolute; left: 24px; top: 16px; width: 40px; height: 40px; font-size: 12px; }
+  @media (max-aspect-ratio: 17/10) {   /* 16:10 и уже — пункты и кнопки плотнее */
+    .pcnav.top nav button { padding: 0 6px !important; font-size: 13px !important; }
+    .pcnav.top .cta { padding: 0 14px; }
+  }
+  .pcnav.top nav button {
+    height: 40px; padding: 0 10px; border: 0; border-radius: 25px; background: none; color: inherit;
+    transition: background-color .2s, color .2s;
+  }
+  .pcnav.top nav button:hover { background-color: rgba(38, 87, 70, 0.7); color: #fff; }
+  .pcnav.top .right { flex: none; display: flex; align-items: center; gap: 12px; }
+  /* Слева: свёрнут — кружки 50 (иконка 28 по центру), при наведении — ширина 252 с подписями. */
+  .pcnav.side { left: 0; top: 0; bottom: 0; width: 98px; padding: 57px 24px; flex-direction: column; transition: width .25s; }
+  .pcnav.side:hover { width: 300px; }
+  .pcnav.side::before {
+    left: 0; top: 0; bottom: 0; width: 230%; background: linear-gradient(90deg, rgba(16, 44, 35, 0.6), rgba(16, 44, 35, 0));
+    -webkit-mask: linear-gradient(90deg, #000 45%, transparent); mask: linear-gradient(90deg, #000 45%, transparent);
+  }
+  .pcnav.side .grp { display: flex; flex-direction: column; gap: 10px; }
+  .pcnav.side .grp.main { margin: auto 0; }
+  .pcnav.side button {
+    display: flex; align-items: center; gap: 12px; width: 50px; height: 50px; padding: 0 11px; overflow: hidden;
+    transition: width .25s, background-color .2s, color .2s;
+  }
+  .pcnav.side:hover button { width: 252px; }
+  .pcnav.side .ic { flex: none; }
+  .pcnav.side span { opacity: 0; transition: opacity .2s; }
+  .pcnav.side:hover span { opacity: 1; }
+  .pcnav.side button.lg:hover { background-color: rgba(185, 210, 194, 0.7); color: #265746; }
+  .pcnav.side button.call { background-color: var(--btn-call); color: #fff; }
+  /* Слева от столбика (98) — сдвинуть то, что прибито к левому краю. */
+  #screen.wide[data-nav="side"] .floor-tabs, #screen.wide[data-nav="side"] .pano-variants { left: 122px; }
+  #screen.wide[data-nav="side"] .apt-panel { left: max(122px, calc(100% / 6 - 190px)); }
+  #screen.wide[data-nav="top"] .pano-variants { top: calc(60px + var(--dt)); }
+  #screen.wide:not([data-nav="burger"]) .start .menu-cta .pick { display: none; }
+
   /* Стартовый экран (фрейм 925:7738) — самое начало, до облёта: статичная картинка, шапка (бургер, логотип, РУС)
      и кнопки «Начать» (→ облёт) и «Выбрать квартиру» (пока неактивна). Картинка — renders/Static/orbit_177_Loading
      (Dropbox 2026_Renders/Static): кадр облёта 177 в обработке, 4:3, обрезан по центру (cover) ровно как облёт, — облёт
@@ -446,7 +709,8 @@
 <body>
 <div id="screen">
   <canvas id="pano"></canvas>
-  <div id="timeShot"><div></div></div>
+  <canvas id="panoLite"></canvas>
+  <div id="timeShot"><canvas></canvas></div>
   <canvas id="overlay"></canvas>
   <div class="flight" id="mapFlight">   <!-- пролёт облёт → карта: под картой, шапкой и доком (Figma «Район») -->
     <video id="mapFwd" muted playsinline preload="auto"></video>
@@ -462,7 +726,7 @@
   <div class="header">
     <button class="glass" id="burger" aria-label="Меню"><img src="assets/icon-burger.svg" alt=""></button>
     <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
-    <div class="spacer"></div>
+    <button class="glass ap-open" id="apOpen" aria-label="Фильтры квартир"><img src="assets/icon-filters.svg" alt=""></button>
   </div>
 
   <button class="place lg flat garden" data-place="garden"><span class="ico lg"><img src="assets/icon-garden-26.svg" alt=""></span>САД</button>
@@ -471,7 +735,7 @@
   <div class="dock">
     <button class="b lg light2" aria-label="Освещение — ползунок"><i class="ic" style="--i: url(assets/tab-daynight.svg)"></i></button>
     <button class="b lg light" aria-label="День / ночь"><i class="ic" style="--i: url(assets/tab-daynight.svg)"></i></button>
-    <button class="b lg fav" aria-label="Избранное"><i class="ic" style="--i: url(assets/tab-heart.svg)"></i></button>
+    <button class="b lg fav" id="dockFav" aria-label="Избранное"><i class="ic" style="--i: url(assets/tab-heart.svg)"></i></button>
     <button class="b lg filters" id="apts" aria-label="Квартиры"><i class="ic" style="--i: url(assets/tab-filters.svg)"></i></button>
     <button class="b lg map" id="dockMap" aria-label="Карта"><i class="ic" style="--i: url(assets/tab-location.svg)"></i></button>
     <button class="b lg share" aria-label="Поделиться"><i class="ic" style="--i: url(assets/tab-share.svg)"></i></button>
@@ -489,18 +753,42 @@
 
   <div class="apt-popup" id="aptPopup">
     <div class="apt-card">
-      <div class="apt-plan"><img id="aptPlan" alt=""></div>
+      <div class="apt-plan"><img id="aptPlan" alt=""><img class="pn" id="aptPlanSq" alt=""></div>
       <div class="num" id="aptNum"></div>
       <div class="kind" id="aptKind"></div>
       <div class="floor" id="aptFloor"></div>
-      <img class="heart" src="assets/icon-heart-outline.svg" alt="">
+      <img class="heart" id="aptHeart" src="assets/icon-heart-outline.svg" alt="В избранное" role="button">
       <div class="apt-buttons">
-        <span style="width: 77px" class="plan-btn" id="aptViewsBtn" role="button">Виды</span>
-        <span style="width: 100px" class="plan-btn" id="aptPlanBtn" role="button">План</span>
-        <span style="width: 97px">Галерея</span>
+        <span class="lg plan-btn" id="aptViewsBtn" role="button">Виды</span>
+        <span class="lg plan-btn" id="aptPlanBtn" role="button">План<i class="pc">&nbsp;3D</i></span>
+        <span class="lg">Галерея</span>
       </div>
     </div>
     <button class="apt-nav lg close" id="aptClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+  </div>
+
+  <div class="apt-panel" id="aptPanel" data-tab="filters">
+    <div class="ap-tabs">
+      <button class="lg on" data-tab="filters"><i class="ic" style="--i: url(assets/tab-filters.svg)"></i><span>Фильтры</span></button>
+      <button class="lg" data-tab="list"><span>Список (<b id="apCount">0</b>)</span></button>
+      <button class="lg" data-tab="fav"><span class="pc">Избранное</span><img class="ph" src="assets/icon-favorite.svg" alt="Избранное"><span>(<b id="apFavCount">0</b>)</span></button>
+    </div>
+    <div class="ap-body on" data-tab="filters">
+      <div class="ap-row pc"><span>Показать недоступные</span><button class="ap-toggle" id="apUnavail" aria-pressed="false"></button></div>
+      <div class="ap-row"><span>Строение</span><div class="ap-chips" data-key="building"><button data-v="1">А</button><button data-v="2">Б</button></div></div>
+      <div class="ap-row"><span>Спален</span><div class="ap-chips" data-key="rooms"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div>
+      <div class="ap-row"><span>Этаж</span><div class="ap-range" data-key="floor"></div></div>
+      <div class="ap-row"><span>Площадь<i class="pc">, м²</i></span><div class="ap-range" data-key="area"></div></div>
+      <div class="ap-row"><span>Цена, млн<i class="pc"> ₽</i></span><div class="ap-range" data-key="price" data-unit="₽"></div></div>
+      <div class="ap-row"><span>Тип</span><div class="ap-chips inert"><button>Пентхаус</button></div></div>
+      <div class="ap-row"><span>Доп. функции</span><div class="ap-chips inert"><button>Камин</button><button>Терраса</button><button class="pc">С отделкой</button><button class="pc">Без отделки</button></div></div>
+    </div>
+    <div class="ap-actions" id="apActions">
+      <button class="lg" id="apReset">Сбросить</button>
+      <button class="lg ph" id="apApply">Применить</button>
+    </div>
+    <div class="ap-body ap-list" data-tab="list" id="apList"></div>
+    <div class="ap-body ap-list" data-tab="fav" id="apFav"></div>
   </div>
 
   <div class="plan3d" id="plan3d">
@@ -617,6 +905,39 @@
     <button class="about-close lg" id="aboutClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
   </div>
 
+  <div class="pcnav top">
+    <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
+    <nav class="l">
+      <button data-go="menuAbout">О ПРОЕКТЕ</button>
+      <button data-go="menuMap">РАЙОН</button>
+      <button data-go="menuOverview">ОБЩИЙ ВИД</button>
+    </nav>
+    <nav class="r">
+      <button data-go="menuFloors">ЛОББИ И ПАРКОВКА</button>
+      <button data-go="menuGarden">САД</button>
+      <button data-go="menuFav">ИЗБРАННОЕ</button>
+    </nav>
+    <div class="glass lang">рус</div>
+    <div class="right">
+      <button class="cta pick" data-go="pick">Выбрать квартиру</button>
+      <button class="cta call">Заказать звонок</button>
+    </div>
+  </div>
+  <div class="pcnav side">
+    <div class="grp main">
+      <button class="lg" data-go="menuAbout"><i class="ic" style="--i: url(assets/nav-about.svg)"></i><span>О ПРОЕКТЕ</span></button>
+      <button class="lg" data-go="menuMap"><i class="ic" style="--i: url(assets/tab-location.svg)"></i><span>РАЙОН</span></button>
+      <button class="lg" data-go="menuOverview"><i class="ic" style="--i: url(assets/nav-overview.svg)"></i><span>ОБЩИЙ ВИД</span></button>
+      <button class="lg" data-go="menuFloors"><i class="ic" style="--i: url(assets/icon-lobby.png)"></i><span>ЛОББИ И ПАРКОВКА</span></button>
+      <button class="lg" data-go="menuGarden"><i class="ic" style="--i: url(assets/icon-garden-26.svg)"></i><span>САД</span></button>
+      <button class="lg" data-go="menuFav"><i class="ic" style="--i: url(assets/tab-heart.svg)"></i><span>ИЗБРАННОЕ</span></button>
+    </div>
+    <div class="grp">
+      <button class="lg" data-go="pick"><i class="ic" style="--i: url(assets/tab-filters.svg)"></i><span>ВЫБРАТЬ КВАРТИРУ</span></button>
+      <button class="lg call"><i class="ic" style="--i: url(assets/nav-call.svg)"></i><span>ЗАКАЗАТЬ ЗВОНОК</span></button>
+    </div>
+  </div>
+
   <div class="menu" id="menu">
     <div class="header">
       <button class="glass" id="close" aria-label="Закрыть">
@@ -631,7 +952,7 @@
       <a href="#" class="lg" id="menuOverview">ОБЩИЙ ВИД</a>
       <a href="#" class="lg" id="menuFloors">ЛОББИ И ПАРКОВКА</a>
       <a href="#" class="lg" id="menuGarden">САД</a>
-      <a href="#" class="lg">ИЗБРАННОЕ</a>
+      <a href="#" class="lg" id="menuFav">ИЗБРАННОЕ</a>
     </nav>
     <div class="menu-cta">
       <a href="#" class="call">Заказать звонок</a>
@@ -647,6 +968,7 @@
   </div>
 </div>
 
+<script src="crm.js"></script>
 <script>
 (() => {
   const W_DESIGN = 430, H_DESIGN = 932, H_CONTENT = 840;   // экран макета и его часть над адресной строкой Safari
@@ -669,12 +991,16 @@
   // lift — доля высоты основного кадра 4:3. Снизу открывается запас квадратного рендера (1/6 основного кадра);
   // если lift больше, чем позволяет запас, — под кадром рисуется отражение (см. draw()).
   const qs = new URLSearchParams(location.search);
-  const APT_VIEW = { zoom: +qs.get('zoom') || 1.3, lift: qs.has('lift') ? +qs.get('lift') : 0.2 };
+  // lift по умолчанию (нет ?lift) — свой у каждой квартиры: она встаёт посередине между логотипом и карточкой (aptLift).
+  const APT_VIEW = { zoom: +qs.get('zoom') || 1.2, lift: qs.has('lift') ? +qs.get('lift') : null };   // до 2026-10-27: 1.3 / 0.2
+  // Подъём не больше APT_LIFT_MAX (?liftmax=): у нижних этажей середина требовала до 0.31 — дом уезжал под шапку.
+  const APT_LIFT_MAX = qs.has('liftmax') ? +qs.get('liftmax') : 0.2055;
   const VIEW_MS = 600;   // длительность перехода
 
   const screen = document.getElementById('screen');
   const canvas = document.getElementById('pano');
   const ctx = canvas.getContext('2d');
+  const liteCanvas = document.getElementById('panoLite'), liteCtx = liteCanvas.getContext('2d');
   const hint = document.getElementById('hint');
 
   // --- Вписываем экран дизайна в окно ---
@@ -700,16 +1026,53 @@
     style: 'position:absolute;left:8px;right:8px;top:45%;z-index:99;padding:6px 8px;font:12px/1.4 monospace;' +
       'color:#fff;background:rgba(0,0,0,.7);border-radius:6px;pointer-events:none;word-break:break-word',
   })) : null;
+  // ?frame — номер кадра облёта и угол поверх страницы (подбор кадров, где прятать иконки САД / ЛОББИ).
+  const frameDebug = qs.has('frame') ? document.body.appendChild(Object.assign(document.createElement('div'), {
+    style: 'position:fixed;left:12px;top:12px;z-index:100;padding:6px 10px;font:600 16px/1.3 monospace;' +
+      'color:#fff;background:rgba(0,0,0,.7);border-radius:6px;pointer-events:none',
+  })) : null;
   // На ПК кнопка в углу окна переключает вид: «ПК» — широкий, на всё окно; «Мобайл» — экран макета 430×932
   // с нарисованной адресной строкой Safari, вписан в окно. ?sim=1 — сразу «Мобайл».
   const SIMS = [{ name: 'ПК' }, { name: 'Мобайл', mobile: true }];
+  // Карточка квартиры телефона: «Стало» — новая, «Было» — прежняя по макету Figma. На ПК кнопка рядом с «ПК / Мобайл»,
+  // видна только при «Мобайл» и открытой карточке; ?popup=old — сразу «Было» (и на телефоне).
+  let popupOld = qs.get('popup') === 'old';
+  screen.dataset.popup = popupOld ? 'old' : 'new';
   let sim = Math.min(+qs.get('sim') || 0, SIMS.length - 1);
+  // Рядом — кнопка меню ПК (виден только при «ПК»): верх / слева / бургер (см. .pcnav). ?nav=top|side|burger.
+  // На телефоне боком (тоже .wide) — бургер.
+  const NAVS = [{ id: 'top', name: 'Меню: верх' }, { id: 'side', name: 'Меню: слева' }, { id: 'burger', name: 'Меню: бургер' }];
+  let nav = Math.max(0, NAVS.findIndex(n => n.id === qs.get('nav')));
+  const NAV_TOP_DT = 24;   // «верх»: шапки экранов и всё, что под ними, — ниже строки меню
+  screen.dataset.nav = PHONE ? 'burger' : NAVS[nav].id;
   if (!PHONE) {
-    const b = document.body.appendChild(Object.assign(document.createElement('button'), {
-      style: 'position:fixed;right:12px;top:12px;z-index:100;padding:8px 14px;border:0;border-radius:10px;cursor:pointer;' +
-        'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
-      onclick: () => { sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name; fit(); gardenRefit(); },
+    const bar = document.body.appendChild(Object.assign(document.createElement('div'), {
+      style: 'position:fixed;right:12px;bottom:12px;z-index:100;display:flex;gap:8px',   // внизу — не мешает строке меню
     }));
+    const button = onclick => bar.appendChild(Object.assign(document.createElement('button'), {
+      style: 'padding:8px 14px;border:0;border-radius:10px;cursor:pointer;' +
+        'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
+      onclick,
+    }));
+    const nb = button(() => { nav = (nav + 1) % NAVS.length; nb.textContent = NAVS[nav].name; screen.dataset.nav = NAVS[nav].id; fit(); });
+    const b = button(() => {
+      sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name;
+      nb.style.visibility = SIMS[sim].mobile ? 'hidden' : '';
+      fit(); gardenRefit();
+    });
+    const pb = bar.insertBefore(button(() => {
+      popupOld = !popupOld; screen.dataset.popup = popupOld ? 'old' : 'new'; pbShow();
+    }), b);
+    const aptPopupEl = document.getElementById('aptPopup');
+    const pbShow = () => {
+      pb.textContent = popupOld ? 'Было' : 'Стало';
+      pb.style.display = SIMS[sim].mobile && aptPopupEl.classList.contains('open') ? '' : 'none';
+    };
+    new MutationObserver(pbShow).observe(aptPopupEl, { attributes: true, attributeFilter: ['class'] });
+    b.addEventListener('click', pbShow);
+    pbShow();
+    nb.textContent = NAVS[nav].name;
+    nb.style.visibility = SIMS[sim].mobile ? 'hidden' : '';
     b.textContent = SIMS[sim].name;
   }
   function fit() {
@@ -748,6 +1111,7 @@
       scale = innerHeight / H;
       W = Math.max(W_DESIGN, innerWidth / scale);
       db = H_DESIGN - H_CONTENT;   // низ макета — к низу окна (адресная строка Safari на ПК не рисуется)
+      if (screen.dataset.nav === 'top') dt = NAV_TOP_DT;
     }
     screen.style.top = top;
     screen.style.width = `${W}px`;
@@ -757,6 +1121,7 @@
     screen.style.setProperty('--dx', `${(W - W_DESIGN) / 2}px`);   // сдвиг элементов, прибитых к x макета 430, к центру
     screen.style.transform = `translate(-50%, -50%) scale(${scale})`;
     if (vpDebug) vpDebug.textContent = vpInfo;
+    screen.dispatchEvent(new Event('layout'));   // ПК ↔ телефон: приближение выбранной квартиры (только на телефоне)
     const dpr = Math.min(devicePixelRatio * scale, 3);
     const cw = Math.round(W * dpr), ch = Math.round(H * dpr);
     if (cw !== canvas.width || ch !== canvas.height) bmpGen++;   // распакованные кадры — под новый размер холста
@@ -788,6 +1153,15 @@
   const DECODE_MB = { phone: 250, desktop: 700 };
   const DECODE_PARALLEL = 2;
   const DECODE_NEAR_DEG = 20;
+  // Облегчённые кадры для движения (решение 2026-10-27): <набор>/motion/ — тот же облёт, 1280 px (tools/compress_renders.py).
+  // Грузятся и распаковываются все (видимой полосой, в MOTION_PX по ширине кадра; телефон ~100 МБ, ПК ~660 МБ), поэтому
+  // при быстром свайпе облёт пролетает все кадры подряд без пауз. В движении (и STILL_MS после) показываются они,
+  // облёт остановился — полный кадр. Нет папки motion/ — как раньше, только полные кадры. ?motion=0 — выключить.
+  const MOTION_PX = { phone: 720, desktop: 1280 };   // ?motionpx=N
+  const MOTION_ON = qs.get('motion') !== '0';
+  const MOTION_PARALLEL = 6;
+  const STILL_MS = 150;
+  const LITE_CANVAS = qs.get('litecanvas') !== '0';   // ?litecanvas=0 — в движении рисовать в основной холст (сравнение)
   let bmpGen = 0;   // растёт при смене размера холста — распакованные кадры пересоздаются
   // Набор кадров облёта: папка, шаг, свои кадры и маски. У каждого часа суток свой набор (см. «Время суток» ниже);
   // cur — набор, который сейчас показывается.
@@ -797,12 +1171,22 @@
              masks: new Map(),     // угол облёта, ° -> Image маски
              loading: new Map(),   // угол -> { ctl: AbortController, mask: Image } в загрузке
              missing: new Set(),   // углы, которых нет в наборе
-             bitmaps: new Map(),   // угол -> { bmp, gen, sx, sw, ky } распакованная полоса кадра (см. DECODE_MB)
+             bitmaps: new Map(),   // угол -> распакованная полоса кадра (см. DECODE_MB и ниже)
              decoding: new Map(),  // угол -> gen, распаковывается
-             sharp: null,          // { i, gen, bmp, sx, sw, ky } кадр в полном разрешении для приближения
-             available: [] };      // углы распакованных кадров — готовых к показу
+             sharp: null,          // { i, gen, bmp, ... } кадр в полном разрешении для приближения
+             motion: { frames: new Map(), bitmaps: new Map(), loading: new Set(), decoding: new Map(),
+                       missing: new Set(), absent: !MOTION_ON },   // облегчённые кадры (MOTION_PX), те же поля
+             available: [] };      // углы распакованных кадров (полных или облегчённых) — готовых к показу
   }
-  function refreshAvailable(s) { s.available = [...s.bitmaps.keys()].sort((a, b) => a - b); }
+  // Распакованный кадр: { bmp, gen, sx, sy, sw, sh, fw, fh } — bmp — полоса (sx, sy, sw, sh) кадра fw×fh, px этого кадра.
+  function refreshAvailable(s) {
+    s.available = [...new Set([...s.bitmaps.keys(), ...s.motion.bitmaps.keys()])].sort((a, b) => a - b);
+  }
+  function dropMotion(s) {
+    for (const b of s.motion.bitmaps.values()) b.bmp.close();
+    s.motion.bitmaps.clear();
+    refreshAvailable(s);
+  }
   function dropBitmap(s, i) {
     const b = s.bitmaps.get(i);
     if (b) { b.bmp.close(); s.bitmaps.delete(i); }
@@ -838,7 +1222,7 @@
   function decodeFrame(f, r) {
     return createImageBitmap(f.blob, r.sx, 0, r.sw, f.h, { resizeWidth: r.w, resizeHeight: r.h, resizeQuality: 'high' })
       // Размер — у самой картинки: браузер без resizeWidth/Height распакует полосу 1:1.
-      .then(bmp => ({ bmp, sx: r.sx, sw: r.sw, ky: bmp.height / f.h }));
+      .then(bmp => ({ bmp, sx: r.sx, sw: r.sw, sy: 0, sh: f.h, fw: f.w, fh: f.h }));
   }
   function decodePriority(i) {
     const d = Math.abs(i - (angle % 360 + 360) % 360), dc = Math.min(d, 360 - d);
@@ -925,10 +1309,69 @@
       if (!s.frames.has(i) && !s.loading.has(i)) load(s, i);
     }
     pumpDecode(s);
+    pumpMotion(s);
     if (!s.loading.size && !s.available.length && s.missing.size === n) showHint(
       location.protocol === 'file:'
         ? 'Кадры не грузятся с file:// — запустите serve.cmd и откройте http://localhost:8080'
         : `Нет кадров в web/${s.dir} — запустите sync.cmd`);
+  }
+  // Облегчённые кадры: все, от ближних к текущему углу. Первые MOTION_PARALLEL не нашлись — папки motion/ нет.
+  function pumpMotion(s) {
+    const m = s.motion;
+    if (m.absent) return;
+    const order = [];
+    for (let k = 0; k < s.def.count; k++) if (!m.missing.has(k * s.def.stepDeg)) order.push(k * s.def.stepDeg);
+    order.sort((a, b) => priority(a) % 1000 - priority(b) % 1000);
+    for (const i of order) {
+      if (m.loading.size >= MOTION_PARALLEL) break;
+      if (!m.frames.has(i) && !m.loading.has(i)) loadMotion(s, i);
+    }
+    if (!canvas.width) return;
+    for (const i of order) {
+      if (m.decoding.size >= DECODE_PARALLEL) break;
+      const b = m.bitmaps.get(i);
+      if (m.frames.has(i) && (!b || b.gen !== bmpGen) && !m.decoding.has(i)) decodeMotion(s, i);
+    }
+  }
+  function loadMotion(s, i) {
+    const m = s.motion;
+    m.loading.add(i);
+    fetch(s.dir + 'motion/' + s.def.file(i / s.def.stepDeg))
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+      .then(async blob => { const [w, h] = await frameSize(blob); m.frames.set(i, { blob, w, h }); })
+      .catch(() => {
+        m.missing.add(i);
+        if (!m.frames.size && m.missing.size >= Math.min(MOTION_PARALLEL, s.def.count)) m.absent = true;
+      })
+      .finally(() => { m.loading.delete(i); if (s === cur) pump(); });
+  }
+  // Распаковывается видимая на общем виде часть кадра (как bitmapRect, и по высоте тоже): приближение и подъём
+  // выбранной квартиры её не покрывают — тогда draw() берёт полный кадр.
+  function motionRect(f) {
+    const baseH = Math.min(f.h, f.w / ORBIT_BASE_ASPECT);
+    const k = Math.max(canvas.width / f.w, canvas.height / baseH);
+    const sw = Math.min(f.w, Math.ceil(canvas.width / k) + 2), sh = Math.min(f.h, Math.ceil(canvas.height / k) + 2);
+    const r = Math.min(1, (+qs.get('motionpx') || (PHONE ? MOTION_PX.phone : MOTION_PX.desktop)) / f.w);
+    return { sx: Math.floor((f.w - sw) / 2), sy: Math.floor((f.h - sh) / 2), sw, sh,
+             w: Math.max(1, Math.round(sw * r)), h: Math.max(1, Math.round(sh * r)) };
+  }
+  function decodeMotion(s, i) {
+    const m = s.motion, f = m.frames.get(i), gen = bmpGen, r = motionRect(f);
+    m.decoding.set(i, gen);
+    createImageBitmap(f.blob, r.sx, r.sy, r.sw, r.sh, { resizeWidth: r.w, resizeHeight: r.h, resizeQuality: 'high' })
+      .then(bmp => {
+        if (m.decoding.get(i) === gen) m.decoding.delete(i);
+        const old = m.bitmaps.get(i);
+        if (s !== cur || (old && old.gen > gen)) { bmp.close(); return; }
+        old?.bmp.close();
+        m.bitmaps.set(i, { bmp, gen, sx: r.sx, sy: r.sy, sw: r.sw, sh: r.sh, fw: f.w, fh: f.h });
+        refreshAvailable(s);
+        draw(); pump();
+      }, e => {
+        console.warn('orbit motion decode:', i, e);
+        if (m.decoding.get(i) === gen) m.decoding.delete(i);
+        m.frames.delete(i); m.missing.add(i);
+      });
   }
   function load(s, i) {
     const file = s.def.file(i / s.def.stepDeg);
@@ -990,33 +1433,52 @@
     shown = i;
     const bucket = Math.round(angle / cur.def.stepDeg);   // повернули на шаг набора — пересчитать очередь загрузки
     if (bucket !== pumpedAt) { pumpedAt = bucket; pump(); }
-    const f = cur.frames.get(i);
-    // Источник — распакованная полоса кадра (bmp; sx, sw — её место в кадре, ky — её масштаб). У приближенного
-    // стоящего облёта — кадр в полном разрешении, когда он распакуется (до того — обычный).
+    // Источник — распакованная полоса кадра: полный, облегчённый или, у приближенного стоящего облёта, полный в
+    // полном разрешении (когда распакуется). В движении — облегчённый, если он закрывает весь холст.
     if (view.zoom <= 1.01) dropSharp(cur);
-    const sharp = view.zoom > 1.01 && !tween && !dragging && angle === target && sharpFrame(cur, i);
-    const src = sharp || cur.bitmaps.get(i);
+    const moving = performance.now() - movedAt < STILL_MS;
+    const sharp = view.zoom > 1.01 && !tween && !dragging && !moving && cur.frames.has(i) && sharpFrame(cur, i);
+    const full = sharp || cur.bitmaps.get(i), lite = cur.motion.bitmaps.get(i), any = full || lite;
     const mask = cur.masks.get(i) || null;
-    const baseH = Math.min(f.h, f.w / ORBIT_BASE_ASPECT);   // основной кадр, px картинки
-    const k = Math.max(canvas.width / f.w, canvas.height / baseH) * view.zoom;
-    const w = f.w * k, h = f.h * k;
+    // Положение кадра на холсте не зависит от разрешения источника — считается по любому.
+    const baseH = Math.min(any.fh, any.fw / ORBIT_BASE_ASPECT);   // основной кадр, px картинки
+    const k0 = Math.max(canvas.width / any.fw, canvas.height / baseH) * view.zoom;
+    const w = any.fw * k0, h = any.fh * k0;
     // Кадр сдвигается вверх на lift высоты основного кадра. Верхний край картинки не открываем; нижний может открыться
     // (дом поднят выше, чем позволяет запас) — полосу под кадром закрывает его зеркальное отражение с затемнением.
-    const y = Math.min(0, (canvas.height - h) / 2 - view.lift * baseH * k);
+    const y = Math.min(0, (canvas.height - h) / 2 - view.lift * baseH * k0);
     const x = (canvas.width - w) / 2;
+    const covers = b => {   // полоса b закрывает весь холст
+      const kb = w / b.fw;
+      return x + b.sx * kb <= 1 && x + (b.sx + b.sw) * kb >= canvas.width - 1 &&
+             y + b.sy * kb <= 1 && y + (b.sy + b.sh) * kb >= canvas.height - 1;
+    };
+    const src = lite && (moving || !full) && covers(lite) ? lite : full || lite;
     const key = [src.bmp, mask, x, y, w, canvas.width, canvas.height];
     if (!force && drawn && key.every((v, n) => v === drawn[n])) return;
     drawn = key;
+    const k = w / src.fw;   // px кадра источника -> px холста
+    if (src === lite && LITE_CANVAS) {
+      // В движении — холст #panoLite в разрешении облегчённого кадра, растянутый на экран через CSS (решение
+      // 2026-10-27): перерисовка большого холста на каждый кадр тормозила на большом окне. Основной холст под ним
+      // не трогается; остановился — рисуется полный кадр в основной, #panoLite прячется.
+      const r = Math.min(1, src.bmp.width / (src.sw * k));
+      const lw = Math.max(1, Math.round(canvas.width * r)), lh = Math.max(1, Math.round(canvas.height * r));
+      if (liteCanvas.width !== lw || liteCanvas.height !== lh) { liteCanvas.width = lw; liteCanvas.height = lh; }
+      liteCtx.fillRect(0, 0, lw, lh);
+      liteCtx.drawImage(src.bmp, (x + src.sx * k) * r, (y + src.sy * k) * r, src.sw * k * r, src.sh * k * r);
+      liteCanvas.classList.add('on');
+    } else {
     const gap = canvas.height - (y + h);
-    const bh = src.bmp.height, bx = x + src.sx * k, bw = src.sw * k;   // полоса источника на холсте
+    const bh = src.bmp.height, ky = bh / src.sh, bx = x + src.sx * k, bw = src.sw * k;   // полоса источника на холсте
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(src.bmp, bx, y, bw, h);
+    ctx.drawImage(src.bmp, bx, y + src.sy * k, bw, src.sh * k);
     if (gap > 0) {
-      const rows = Math.min(f.h, gap / k);   // столько строк снизу кадра отражаем
+      const rows = Math.min(src.sh, gap / k);   // столько строк снизу кадра отражаем
       ctx.save();
       ctx.translate(0, y + h);
       ctx.scale(1, -1);
-      ctx.drawImage(src.bmp, 0, bh - rows * src.ky, src.bmp.width, rows * src.ky, bx, -rows * k, bw, rows * k);
+      ctx.drawImage(src.bmp, 0, bh - rows * ky, src.bmp.width, rows * ky, bx, -rows * k, bw, rows * k);
       ctx.restore();
       const g = ctx.createLinearGradient(0, y + h - gap * 0.3, 0, canvas.height);
       g.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1025,10 +1487,14 @@
       ctx.fillRect(0, y + h - gap * 0.3, canvas.width, gap * 1.3);
       ctx.fillStyle = '#000';
     }
+    liteCanvas.classList.remove('on');
+    }
     // 3D-слой (overlay.js) рисуется в той же камере и с той же обрезкой: полный кадр w×h, его угол в (x, y).
+    liteShown = src === lite;
     window.orbitFrame = { angle: i, width: canvas.width, height: canvas.height, coverW: w, coverH: h, x, y, designW: W,
                           mask: cur.masks.get(i) || null };
     screen.dispatchEvent(new Event('orbitframe'));
+    if (frameDebug) frameDebug.textContent = `кадр ${pad(Math.round(i / set.stepDeg))} · ${i}°${src === lite ? ' · motion' : ''}`;
   }
 
   // --- Приближение в режиме «квартиры»: плавный переход между общим видом и APT_VIEW ---
@@ -1046,13 +1512,36 @@
   }
   // Приближение — только когда выбрана квартира (событие от overlay.js; id = null — выбор снят, общий вид).
   // Сам режим «квартиры» камеру не двигает: только подсветки и скрытые иконки САД/ЛОББИ.
-  screen.addEventListener('apartmentselect', e => setView(e.detail.id ? APT_VIEW : BASE_VIEW));
+  // На ПК (#screen.wide) не приближается совсем: карточка справа, панель слева, дом и так между ними (решение 2026-10-27).
+  // Телефон: кадр поднимается так, чтобы центр квартиры (frameY — доля высоты полного кадра, от overlay.js) встал
+  // посередине между низом логотипа и верхом карточки (решение 2026-10-27). Формула — обратная к draw().
+  let viewApt = null, viewFy = null, viewWide = null;
+  function aptLift() {
+    const f = cur.frames.get(shown) || cur.motion.frames.get(shown);
+    if (APT_VIEW.lift !== null || viewFy === null || !f) return APT_VIEW.lift ?? 0.15;
+    const cr = canvas.getBoundingClientRect(), toCanvas = v => (v - cr.top) * canvas.height / cr.height;
+    const logo = screen.querySelector('.header .logo').getBoundingClientRect();
+    const card = document.querySelector('.apt-card').getBoundingClientRect();
+    const T = toCanvas((logo.bottom + card.top) / 2);
+    const baseH = Math.min(f.h, f.w / ORBIT_BASE_ASPECT);
+    const k = Math.max(canvas.width / f.w, canvas.height / baseH) * APT_VIEW.zoom, h = f.h * k;
+    return Math.min(APT_LIFT_MAX, ((canvas.height - h) / 2 + viewFy * h - T) / (baseH * k));
+  }
+  function updateView() {
+    viewWide = screen.classList.contains('wide');
+    setView(viewApt && !viewWide ? { zoom: APT_VIEW.zoom, lift: aptLift() } : BASE_VIEW);
+  }
+  screen.addEventListener('apartmentselect', e => { viewApt = e.detail.id; viewFy = e.detail.frameY; updateView(); });
+  screen.addEventListener('layout', () => { if (screen.classList.contains('wide') !== viewWide) updateView(); });
 
   // --- Свайп по горизонтали крутит облёт, без инерции ---
-  // Палец задаёт целевой угол, картинка догоняет его за ~FOLLOW_MS (сглаживает рывки событий касания).
-  // Отпустили — облёт сразу останавливается (целевой угол — на ближайшем кадре набора).
+  // Палец задаёт целевой угол, картинка догоняет его за ~FOLLOW_MS (сглаживает рывки событий касания). Скорость не
+  // ограничена (решение 2026-10-27: предел 120…360°/с, чтобы не пропускать кадры, оказался медленным) — при быстром
+  // свайпе кадры пропускаются, а пауз нет благодаря облегчённым кадрам (MOTION_*).
+  // Отпустили — облёт сразу останавливается на ближайшем к текущему углу кадре, не догоняя палец (решение 2026-10-27).
   const FOLLOW_MS = 60;
   let dragging = false, lastX = 0, target = angle;
+  let movedAt = -1e9, liteShown = false;   // когда облёт последний раз двигался; показан ли облегчённый кадр
   canvas.addEventListener('pointerdown', e => {
     canvas.setPointerCapture(e.pointerId);
     dragging = true; lastX = e.clientX; target = angle; canvas.classList.add('dragging');
@@ -1065,7 +1554,7 @@
   const up = () => {
     if (!dragging) return;
     dragging = false; canvas.classList.remove('dragging');
-    target = Math.round(target / cur.def.stepDeg) * cur.def.stepDeg;
+    target = Math.round(angle / cur.def.stepDeg) * cur.def.stepDeg;
   };
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', up);
@@ -1077,8 +1566,9 @@
     if (angle !== target) {
       const d = target - angle;
       angle = Math.abs(d) < 0.01 ? target : angle + d * (1 - Math.exp(-dt / FOLLOW_MS));
+      movedAt = now;
       draw();
-    }
+    } else if (liteShown && now - movedAt >= STILL_MS) draw();   // остановился — полный кадр вместо облегчённого
     stepView(now);
     requestAnimationFrame(tick);
   })(performance.now());
@@ -1120,6 +1610,7 @@
       dropSharp(cur);
       refreshAvailable(cur);
     }
+    dropMotion(cur);
     cur = s; shown = -1;
     pumpedAt = Math.round(angle / cur.def.stepDeg);
     pump();
@@ -1140,8 +1631,17 @@
   const tsBtn = document.querySelector('.dock .light2');
   const tsBar = document.getElementById('timeslider');
   const tsThumb = tsBar.querySelector('.thumb'), tsLabel = tsThumb.querySelector('b');
-  const tsShot = document.getElementById('timeShot'), tsFrame = tsShot.firstElementChild;
-  const ts = { data: null, imgs: [], angle: 0, minutes: 540, shown: -1, open: false, req: 0 };
+  // Кадры часа — как облёт (решение 2026-10-27): облегчённые (Time_177/HQ/motion/, tools/compress_renders.py)
+  // распаковываются все сразу, пока ползунок двигается (и STILL_MS после) — показываются они; остановился — полный кадр
+  // в масштабе холста (распаковка вне основного потока, не больше TS_FULL_KEEP распакованных). Раньше кадры были <img>:
+  // браузер распаковывал 4K-кадр при показе в основном потоке — ползунок дёргался. Нет облегчённых (тест LQ) — только
+  // полные. Кадры часа 4:3 (обрезаны из квадратного рендера), облёт квадратный: кадр часа встаёт по ширине кадра облёта
+  // и по центру его высоты (тот же объектив).
+  const TS_FULL_KEEP = 3;
+  const tsShot = document.getElementById('timeShot'), tsCanvas = tsShot.firstElementChild, tsCtx = tsCanvas.getContext('2d');
+  // frames[k]: { blob, w, h } — сжатый полный кадр; lite, full — распакованные, как у облёта ({ bmp, sx, sy, sw, sh, fw, fh }).
+  const ts = { data: null, frames: [], angle: 0, minutes: 540, shown: -1, open: false, req: 0, movedAt: -1e9, still: 0, drawn: null,
+               drawnK: -1, paint: null, fadeT0: 0, fading: false };
   const tsFmt = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
   async function tsPrepare() {   // data/time/camera.json и все кадры набора — сразу (20 кадров)
     if (ts.data) return;
@@ -1149,8 +1649,24 @@
     const webp = f => f.file.replace(/\.png$/, '.webp');
     const hq = await fetch(TIME_DIR + 'HQ/' + webp(d.frames[0]), { method: 'HEAD' }).then(r => r.ok, () => false);
     const dir = TIME_DIR + (hq ? 'HQ/' : 'LQ/');
-    ts.imgs = d.frames.map(f => Object.assign(tsFrame.appendChild(new Image()),
-      { alt: '', decoding: 'async', onload: () => ts.data && tsShow(), src: dir + webp(f) }));
+    const mpx = +qs.get('motionpx') || (PHONE ? MOTION_PX.phone : MOTION_PX.desktop);
+    const get = u => fetch(u).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); });
+    ts.frames = d.frames.map(f => {
+      const fr = { blob: null, w: 0, h: 0, lite: null, full: null, decoding: false };
+      get(dir + webp(f)).then(async blob => {
+        [fr.w, fr.h] = await frameSize(blob);
+        fr.blob = blob;
+        if (ts.data) tsShow();
+      }).catch(e => console.warn('time frame:', e));
+      if (hq && MOTION_ON) get(dir + 'motion/' + webp(f)).then(async blob => {
+        const [w, h] = await frameSize(blob), r = Math.min(1, mpx / w);
+        const bmp = await createImageBitmap(blob,
+          { resizeWidth: Math.round(w * r), resizeHeight: Math.round(h * r), resizeQuality: 'high' });
+        fr.lite = { bmp, sx: 0, sy: 0, sw: w, sh: h, fw: w, fh: h };
+        if (ts.data) tsShow();
+      }).catch(() => {});   // нет облегчённого — только полный
+      return fr;
+    });
     ts.angle = d.orbitFrame * SETS.HQ.stepDeg;
     ts.data = d;
   }
@@ -1158,26 +1674,79 @@
     const { frames, slider } = ts.data;
     let best = -1, bestD = Infinity;
     frames.forEach((f, k) => {
-      const d = Math.abs(f.minutes - ts.minutes);
-      if (ts.imgs[k].complete && ts.imgs[k].naturalWidth && d < bestD) { bestD = d; best = k; }
+      const d = Math.abs(f.minutes - ts.minutes), fr = ts.frames[k];
+      if ((fr.lite || fr.blob) && d < bestD) { bestD = d; best = k; }
     });
     const p = (ts.minutes - slider.minMinutes) / (slider.maxMinutes - slider.minMinutes);
     tsThumb.style.left = `calc(26px + ${p} * (100% - 52px))`;
     tsLabel.textContent = tsFmt(best >= 0 ? frames[best].minutes : ts.minutes);
     tsBar.setAttribute('aria-valuenow', ts.minutes);
     tsBar.setAttribute('aria-valuetext', tsLabel.textContent);
-    if (best === ts.shown) return;
-    ts.imgs[ts.shown]?.classList.remove('on');
-    ts.imgs[best]?.classList.add('on');
-    ts.shown = best;
+    if (best !== ts.shown) {   // сменился кадр — движение: облегчённый, через STILL_MS — полный
+      ts.shown = best;
+      ts.movedAt = performance.now();
+      clearTimeout(ts.still);
+      ts.still = setTimeout(tsDraw, STILL_MS);
+    }
+    tsDraw();
   }
-  function tsPlace() {   // кадр часа — на место кадра облёта (window.orbitFrame — в px холста)
-    const o = window.orbitFrame;
-    if (!o) return;
-    const k = W / o.width;
-    Object.assign(tsFrame.style, { left: `${o.x * k}px`, top: `${o.y * k}px`, width: `${o.coverW * k}px`, height: `${o.coverH * k}px` });
+  // Полный кадр k в масштабе холста (как у облёта — bitmapRect / decodeFrame); готов — tsDraw().
+  function tsFull(k) {
+    const fr = ts.frames[k];
+    if (!fr?.blob || fr.decoding || fr.full?.gen === bmpGen) return;
+    fr.decoding = true;
+    const gen = bmpGen, f = { blob: fr.blob, w: fr.w, h: fr.h };
+    decodeFrame(f, bitmapRect(f)).then(b => {
+      fr.decoding = false;
+      fr.full?.bmp.close();
+      fr.full = { ...b, gen };
+      const near = ts.frames.map((x, i) => [i, x]).filter(([, x]) => x.full)
+        .sort((a, b) => Math.abs(a[0] - ts.shown) - Math.abs(b[0] - ts.shown));
+      for (const [, x] of near.slice(TS_FULL_KEEP)) { x.full.bmp.close(); x.full = null; }
+      tsDraw();
+    }, e => { fr.decoding = false; console.warn('time decode:', k, e); });
   }
-  screen.addEventListener('orbitframe', tsPlace);
+  function tsDraw() {   // кадр часа — на место кадра облёта (window.orbitFrame — в px холста)
+    const o = window.orbitFrame, fr = ts.frames[ts.shown];
+    if (!ts.data || !o || !fr || !tsBar.classList.contains('open')) return;   // закрыт — не распаковывать
+    const moving = performance.now() - ts.movedAt < STILL_MS;
+    if (!moving || !fr.lite) tsFull(ts.shown);
+    const src = (moving || !fr.full) && fr.lite ? fr.lite : fr.full || fr.lite;
+    if (tsCanvas.width !== o.width || tsCanvas.height !== o.height) {
+      tsCanvas.width = o.width; tsCanvas.height = o.height; ts.drawn = null;
+    }
+    if (!src) return;   // кадр ещё распаковывается — на холсте прежний
+    const w = o.coverW, h = w * src.fh / src.fw, x = o.x, y = o.y + (o.coverH - h) / 2, k = w / src.fw;
+    const key = [src.bmp, x, y, w, o.width, o.height];
+    if (ts.drawn && key.every((v, n) => v === ts.drawn[n])) return;
+    // Сменился час (или кадр часа появился впервые) — новый кадр проявляется поверх того, что на экране
+    // (снимок холста), за TS_FADE_MS. Облегчённый → полный того же часа — без проявления.
+    if (ts.shown !== ts.drawnK) {
+      tsPrev.width = o.width; tsPrev.height = o.height;
+      if (ts.drawn) tsPrev.getContext('2d').drawImage(tsCanvas, 0, 0);
+      ts.fadeT0 = performance.now();
+      ts.drawnK = ts.shown;
+    }
+    ts.drawn = key;
+    ts.paint = { bmp: src.bmp, dx: x + src.sx * k, dy: y + src.sy * k, dw: src.sw * k, dh: src.sh * k };
+    tsPaint();
+  }
+  // Проявление кадра часа (решение 2026-10-27; у облёта перетекания нет — решение 2026-10-21). ?tsfade=мс, 0 — без него.
+  const TS_FADE_MS = qs.has('tsfade') ? +qs.get('tsfade') : 300;
+  const tsPrev = document.createElement('canvas');   // что было на экране в начале проявления
+  function tsPaint() {
+    const a = TS_FADE_MS > 0 ? Math.min(1, (performance.now() - ts.fadeT0) / TS_FADE_MS) : 1, p = ts.paint;
+    tsCtx.clearRect(0, 0, tsCanvas.width, tsCanvas.height);
+    if (a < 1) tsCtx.drawImage(tsPrev, 0, 0);
+    tsCtx.globalAlpha = a;
+    tsCtx.drawImage(p.bmp, p.dx, p.dy, p.dw, p.dh);
+    tsCtx.globalAlpha = 1;
+    if (a < 1 && !ts.fading) {
+      ts.fading = true;
+      requestAnimationFrame(() => { ts.fading = false; if (tsBar.classList.contains('open')) tsPaint(); });
+    }
+  }
+  screen.addEventListener('orbitframe', tsDraw);
   async function openTimeSlider() {
     const req = ++ts.req;
     tsBtn.classList.add('on'); tsBar.classList.add('open');
@@ -1192,13 +1761,15 @@
     await rotateTo(ts.angle);
     await waitFor(() => shown === ts.angle, 3000);
     if (req !== ts.req) return;
-    tsPlace();
+    tsDraw();
     tsShot.classList.add('on');
     ts.open = true;
   }
   function closeTimeSlider() {
     ts.req++; ts.open = false;
     tsBtn.classList.remove('on'); tsBar.classList.remove('open'); tsShot.classList.remove('on');
+    for (const fr of ts.frames) { fr.full?.bmp.close(); fr.full = null; }   // облегчённые остаются — быстрый повтор
+    ts.drawn = null; ts.drawnK = -1;   // следующее открытие — кадр проявляется поверх облёта
   }
   tsBtn.onclick = () => tsBar.classList.contains('open') ? closeTimeSlider() : openTimeSlider();
   let tsDrag = false;
@@ -1243,10 +1814,13 @@
     const apts = document.getElementById('apts');
     if (!apts.classList.contains('on')) apts.click();
   });
+  // Меню на ПК (.pcnav): пункты нажимают те же ссылки бургер-меню.
+  document.querySelectorAll('.pcnav [data-go]').forEach(b => b.onclick = () =>
+    (b.dataset.go === 'pick' ? menu.querySelector('.pick') : document.getElementById(b.dataset.go)).click());
 
   // --- Стартовый экран (925:7738): до облёта. «Начать» — к облёту; «Выбрать квартиру» пока неактивна. ---
   // Пункты меню, ведущие на вид (район, общий вид, лобби, сад, «Выбрать квартиру»), тоже убирают стартовый экран;
-  // «О проекте» открывается поверх него, «Избранное» ничего не делает. Параметры проверки (?map, ?floor, ?apt…) и
+  // «О проекте» открывается поверх него. Параметры проверки (?map, ?floor, ?apt…) и
   // ?nostart — сразу без стартового экрана.
   const start = document.getElementById('start');
   const hideStart = () => start.classList.add('hidden');
@@ -1270,12 +1844,12 @@
   }
 
   // --- Попап выбранной квартиры ---
-  // Открывается на 'apartmentselect' от overlay.js. Данные — data/apartments/ (tools/apartments_export.py):
-  // фид застройщика (только квартиры в продаже) и листы планов Plans/<id>.jpg.
+  // Открывается на 'apartmentselect' от overlay.js. Данные — фид CRM застройщика (crm.js, только квартиры в продаже)
+  // и листы планов data/apartments/plans/<id>.jpg (tools/apartments_export.py).
   const popup = document.getElementById('aptPopup');
-  const aptPlan = document.getElementById('aptPlan');
+  const aptPlan = document.getElementById('aptPlan'), aptPlanSq = document.getElementById('aptPlanSq');
   let aptData = {}, aptShown = null;
-  fetch('data/apartments/apartments.json').then(r => r.json()).then(d => { aptData = d; showApartment(aptShown); })
+  window.aptFeed.then(d => { aptData = d; initFilters(); showApartment(aptShown); })
     .catch(e => console.error('apartments:', e));
   const fmt = (v, digits) => v.toLocaleString('ru-RU', { maximumFractionDigits: digits });
   function showApartment(id) {
@@ -1285,12 +1859,189 @@
     const a = aptData[id];
     const floor = a ? a.floor : +id.split('-')[1];
     aptPlan.src = `data/apartments/plans/${id}.jpg`;
-    document.getElementById('aptNum').textContent = a ? `${a.number} | ${a.status}` : `${id} | нет в продаже`;
-    document.getElementById('aptKind').innerHTML = a
-      ? `${a.rooms}к квартира<br>${fmt(a.area, 2)} м²` : '';
-    document.getElementById('aptFloor').innerHTML = `${floor} этаж` + (a && a.price ? `<br>${fmt(a.price / 1e6, 1)} млн` : '');
+    aptPlanSq.src = `data/apartments/plans_sq/${id}.jpg`;
+    // ПК — строки как в WBP_ApartmentWindow (номер, спальни, площадь, этаж, цена — столбиком), телефон — как в макете.
+    const status = a ? a.statusText : 'Нет в продаже';
+    const bedrooms = a ? `${a.rooms} ${a.rooms === 1 ? 'спальня' : a.rooms < 5 ? 'спальни' : 'спален'}` : '';
+    const price = a && a.price ? `${fmt(a.price / 1e6, 1)} млн` : '';
+    // .pc — ПК, .po — прежний попап телефона, .pn — новый (см. CSS .apt-card).
+    const number = a ? a.number : id, area = a ? `${fmt(a.area, 2)} м²` : '';
+    document.getElementById('aptNum').innerHTML = `<span class="pc">Квартира ${number}` +
+      `${a && a.status === 'AVAILABLE' ? '' : ` · ${status}`}</span>` +
+      `<span class="po">${number} | ${status}</span><span class="pn">${number}<small>${status}</small></span>`;
+    document.getElementById('aptKind').innerHTML = a ? `<span class="pc">${bedrooms}<br>${area}</span>` +
+      `<span class="po">${a.rooms}к квартира<br>${area}</span><span class="pn">${a.rooms}к · ${area}</span>` : '';
+    document.getElementById('aptFloor').innerHTML = `<span class="pc">${floor} этаж${price ? `<br>${price} ₽` : ''}</span>` +
+      `<span class="po">${floor} этаж${price ? `<br>${price}` : ''}</span>` +
+      `<span class="pn">${floor} этаж${price ? ` · ${price}` : ''}</span>`;
+    aptHeart.src = favs.has(id) ? 'assets/icon-favorite.svg' : 'assets/icon-heart-outline.svg';
   }
+
+  // --- Панель квартир слева (ПК): фильтры, список отфильтрованных, избранное ---
+  // Фильтры как в приложении UE: корпус (A = 1, Б = 2 — первая цифра id), комнаты, диапазоны этажа, площади и цены
+  // по фиду. Тип и особенности — без данных в фиде, только вид. Отфильтрованное уходит в overlay.js событием
+  // 'apartmentfilter' (window.aptFilterIds, null — все): подсветки остальных прячутся.
+  // «Показать недоступные» (только ПК) — подсветки квартир не в продаже (серые, как в UE): window.aptUnavailable —
+  // проверка id или null (выключено). О них известны только корпус и этаж (из id), остальные фильтры их не трогают;
+  // в «Список» они не входят.
+  // Избранное — сердце карточки; хранится в localStorage этого браузера.
+  const aptHeart = document.getElementById('aptHeart');
+  const FAV_KEY = 'vesper.favorites';
+  const favs = new Set((() => { try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch { return []; } })());
+  aptHeart.onclick = () => {
+    if (!aptShown) return;
+    favs.has(aptShown) ? favs.delete(aptShown) : favs.add(aptShown);
+    try { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); } catch {}
+    showApartment(aptShown);
+    renderLists();
+  };
+  const panel = document.getElementById('aptPanel');
+  const apTabs = [...panel.querySelectorAll('.ap-tabs button')], apBodies = [...panel.querySelectorAll('.ap-body')];
+  function setApTab(tab) {
+    panel.dataset.tab = tab;   // «Сбросить» / «Применить» — только на вкладке фильтров
+    apTabs.forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
+    apBodies.forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
+    syncFavBtn();
+  }
+  apTabs.forEach(b => b.onclick = () => setApTab(b.dataset.tab));
+  // Сердце в доке и «Избранное» в меню — режим «квартиры» с открытой вкладкой избранного (как нажать её в панели;
+  // на телефоне открывается окно). Сердце горит, пока вкладка видна; повторное нажатие — закрыть окно (телефон)
+  // или выйти из режима «квартиры» (ПК, там панель открыта весь режим).
+  const favBtn = document.getElementById('dockFav');
+  const favShown = () => screen.classList.contains('apts-on') && panel.dataset.tab === 'fav' &&
+    (screen.classList.contains('wide') || screen.classList.contains('ap-shown')) && !screen.classList.contains('map-on');
+  function syncFavBtn() { favBtn.classList.toggle('on', favShown()); }
+  new MutationObserver(syncFavBtn).observe(screen, { attributes: true, attributeFilter: ['class'] });
+  function openFav() {
+    const apts = document.getElementById('apts');
+    if (!apts.classList.contains('on')) apts.click();
+    setApTab('fav');
+    screen.classList.add('ap-shown');
+  }
+  favBtn.onclick = () => {
+    if (!favShown()) return openFav();
+    if (screen.classList.contains('wide')) document.getElementById('apts').click();
+    else screen.classList.remove('ap-shown');
+  };
+  document.getElementById('menuFav').addEventListener('click', () => { menu.classList.remove('open'); hideStart(); openFav(); });
+  const aptValue = {
+    floor: a => a.floor, area: a => a.area, price: a => a.price / 1e6,
+    building: (a, id) => id[0], rooms: a => String(a.rooms),
+  };
+  const chips = {}, ranges = {};   // ключ → Set выбранных (пусто — все) / { min, max, lo, hi, set() }
+  let filtered = [], showUnavail = false;
+  const unavailBtn = document.getElementById('apUnavail');
+  function setUnavail(v) {
+    showUnavail = v;
+    unavailBtn.classList.toggle('on', v);
+    unavailBtn.setAttribute('aria-pressed', v);
+    applyFilters();
+  }
+  unavailBtn.onclick = () => setUnavail(!showUnavail);
+  function applyFilters() {
+    filtered = Object.keys(aptData).filter(id => {
+      const a = aptData[id];
+      for (const k in chips) if (chips[k].size && !chips[k].has(aptValue[k](a, id))) return false;
+      for (const k in ranges) { const v = aptValue[k](a, id), r = ranges[k]; if (v < r.lo || v > r.hi) return false; }
+      return true;
+    });
+    const all = filtered.length === Object.keys(aptData).length;
+    window.aptFilterIds = all ? null : new Set(filtered);
+    const fl = ranges.floor, b = chips.building;
+    window.aptUnavailable = !showUnavail ? null : id => (!b.size || b.has(id[0])) &&
+      (!fl || fl.lo === fl.min && fl.hi === fl.max || +id.split('-')[1] >= fl.lo && +id.split('-')[1] <= fl.hi);
+    screen.dispatchEvent(new CustomEvent('apartmentfilter', { detail: { ids: window.aptFilterIds } }));
+    renderLists();
+  }
+  function listRows(ids, empty) {
+    if (!ids.length) return `<div class="empty">${empty}</div>`;
+    return ids.map(id => {
+      const a = aptData[id];
+      return `<button data-id="${id}"${id === aptShown ? ' class="on"' : ''}><span>${a.number}</span><span>${a.rooms}к</span>` +
+        `<span>${fmt(a.area, 2)} м²</span><span>${a.floor} эт.</span><span>${fmt(Math.round(a.price / 1e6), 0)} млн</span></button>`;
+    }).join('');
+  }
+  function renderLists() {
+    const favIds = Object.keys(aptData).filter(id => favs.has(id));
+    document.getElementById('apCount').textContent = filtered.length;
+    document.getElementById('apFavCount').textContent = favIds.length;
+    document.getElementById('apList').innerHTML = listRows(filtered, 'Нет квартир по фильтрам');
+    document.getElementById('apFav').innerHTML = listRows(favIds, 'В избранном пока пусто');
+  }
+  // Строка списка — выбрать квартиру (overlay.js: подсветка и 'apartmentselect').
+  for (const id of ['apList', 'apFav']) document.getElementById(id).addEventListener('click', e => {
+    const b = e.target.closest('button[data-id]');
+    if (!b) return;
+    screen.dispatchEvent(new CustomEvent('apartmentpick', { detail: { id: b.dataset.id } }));
+    screen.classList.remove('ap-shown');   // телефон: окно закрывается, видна карточка квартиры
+  });
+  // Телефон: кнопка фильтра в шапке открывает/закрывает окно, «Применить» закрывает (фильтр применяется сразу).
+  document.getElementById('apOpen').onclick = () => screen.classList.toggle('ap-shown');
+  document.getElementById('apApply').onclick = () => screen.classList.remove('ap-shown');
+  screen.addEventListener('apartmentselect', renderLists);
+  panel.querySelectorAll('.ap-chips[data-key]').forEach(el => {
+    const set = chips[el.dataset.key] = new Set();
+    el.querySelectorAll('button').forEach(b => b.onclick = () => {
+      set.has(b.dataset.v) ? set.delete(b.dataset.v) : set.add(b.dataset.v);
+      b.classList.toggle('on', set.has(b.dataset.v));
+      applyFilters();
+    });
+  });
+  // Диапазон. ПК — ползунок: ручки тянутся мышью/пальцем, не заходят друг за друга; шаг 1. Телефон — поля «от / до»
+  // (как в макете): пустое поле — без ограничения.
+  function makeRange(el, min, max) {
+    const unit = el.dataset.unit ? `<u>${el.dataset.unit}</u>` : '';
+    el.innerHTML = '<i class="track"></i><i class="fill"></i><b class="thumb"></b><b class="thumb"></b>' +
+      `<label class="num"><input inputmode="decimal" placeholder="от">${unit}</label>` +
+      `<label class="num"><input inputmode="decimal" placeholder="до">${unit}</label>`;
+    const [fill, t0, t1] = [el.querySelector('.fill'), ...el.querySelectorAll('.thumb')];
+    const [i0, i1] = el.querySelectorAll('input');
+    const r = { min, max, lo: min, hi: max };
+    const typed = inp => parseFloat(inp.value.replace(/\s/g, '').replace(',', '.'));
+    i0.oninput = i1.oninput = () => {
+      const lo = typed(i0), hi = typed(i1);
+      r.set(isNaN(lo) ? min : Math.max(min, lo), isNaN(hi) ? max : Math.min(max, hi));
+      applyFilters();
+    };
+    r.clear = () => { i0.value = i1.value = ''; r.set(min, max); };
+    const pos = v => `calc(17px + (100% - 34px) * ${(v - min) / (max - min || 1)})`;
+    r.set = (lo, hi) => {
+      r.lo = lo; r.hi = hi;
+      t0.style.left = pos(lo); t1.style.left = pos(hi);
+      fill.style.left = pos(lo); fill.style.width = `calc((100% - 34px) * ${(hi - lo) / (max - min || 1)})`;
+      t0.textContent = fmt(lo, 1); t1.textContent = fmt(hi, 1);   // как FText::AsNumber в UE: «1 599», дробь через запятую; поля «от / до» на телефоне при этом не трогаем
+    };
+    [t0, t1].forEach((t, i) => t.addEventListener('pointerdown', e => {
+      t.setPointerCapture(e.pointerId);
+      const move = ev => {
+        const box = el.getBoundingClientRect(), k = box.width / el.offsetWidth;   // экран масштабирован (fit)
+        const f = Math.min(1, Math.max(0, (ev.clientX - box.left - 17 * k) / (box.width - 34 * k)));
+        const v = Math.round(min + f * (max - min));
+        i ? r.set(r.lo, Math.max(v, r.lo)) : r.set(Math.min(v, r.hi), r.hi);
+        applyFilters();
+      };
+      t.onpointermove = move;
+      t.onpointerup = t.onpointercancel = () => { t.onpointermove = null; };
+    }));
+    r.set(min, max);
+    return r;
+  }
+  function initFilters() {
+    const vals = k => Object.entries(aptData).map(([id, a]) => aptValue[k](a, id));
+    panel.querySelectorAll('.ap-range').forEach(el => {
+      const v = vals(el.dataset.key);
+      ranges[el.dataset.key] = makeRange(el, Math.floor(Math.min(...v)), Math.ceil(Math.max(...v)));
+    });
+    applyFilters();
+  }
+  document.getElementById('apReset').onclick = () => {
+    for (const k in chips) chips[k].clear();
+    panel.querySelectorAll('.ap-chips button').forEach(b => b.classList.remove('on'));
+    for (const k in ranges) ranges[k].clear();
+    setUnavail(false);
+  };
   aptPlan.onerror = () => aptPlan.removeAttribute('src');   // плана нет — белая подложка
+  aptPlanSq.onerror = () => aptPlanSq.removeAttribute('src');
   // ВИДЫ — вид из окна квартиры, как кнопка «ВИД» приложения (pano.js; данные data/views/camera.json).
   document.getElementById('aptViewsBtn').onclick = () => { if (aptShown) window.pano?.openViews(aptShown); };
   screen.addEventListener('apartmentselect', e => showApartment(e.detail.id));
@@ -1304,15 +2055,26 @@
   // низ экрана — кадры шире экрана, так что cover = по высоте; пустых полей вокруг картинки не бывает.
   // render(v) получает масштаб v.s и сдвиг v.x, v.y картинки iw×ih в px экрана дизайна. zoomIn(v) — перед приближением:
   // true — экран сам обработал жест (кадр K сада запускает видео в отрезок), картинка не приближается.
+  // lock() → { x, y } — по этим осям панорама только внутри стартового вида (решение пользователя 2026-10-27, лобби и сад):
+  // на старте кадр по ней не двигается, приближенный — ходит в пределах того, что было видно на старте.
   const toDesign = e => { const r = screen.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale }; };
-  function panZoom(root, maxZoom, render, zoomIn) {
-    const v = { s: 1, x: 0, y: 0, min: 1, cover: 1, iw: 0, ih: 0 };
+  function panZoom(root, maxZoom, render, zoomIn, lock) {
+    const v = { s: 1, x: 0, y: 0, min: 1, cover: 1, iw: 0, ih: 0, cx: null, cy: 0 };
+    const clamp = (p, lo, hi) => lo >= hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, p));
     function apply() {
       v.s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s));
       // Картинка больше экрана — края не открываем; меньше — по центру.
       const w = v.iw * v.s, h = v.ih * v.s;
       v.x = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, v.x));
       v.y = h <= H ? (H - h) / 2 : Math.min(0, Math.max(H - h, v.y));
+      const lk = lock && v.cx !== null && lock();
+      if (lk) {   // стартовый вид в px картинки: центр (cx, cy), размер экрана / min
+        const hw = W / v.min / 2, hh = H / v.min / 2;
+        const x0 = Math.max(0, v.cx - hw), x1 = Math.min(v.iw, v.cx + hw);
+        const y0 = Math.max(0, v.cy - hh), y1 = Math.min(v.ih, v.cy + hh);
+        if (lk.x) v.x = clamp(v.x, W - x1 * v.s, -x0 * v.s);
+        if (lk.y) v.y = clamp(v.y, H - y1 * v.s, -y0 * v.s);
+      }
       render(v);
     }
     function zoom(k, cx, cy) {   // приблизить в k раз вокруг точки (cx, cy) экрана дизайна
@@ -1326,7 +2088,8 @@
       v.cover = Math.max(W / iw, H / ih);   // на весь экран
       v.min = v.cover * start;              // дальше старта не отдаляется
       v.s = v.min; v.x = W / 2 - fx * v.s; v.y = (H - ih * v.s) / 2;   // края не открываются — apply прижмёт
-      apply();
+      v.cx = null; apply();
+      v.cx = (W / 2 - v.x) / v.s; v.cy = (H / 2 - v.y) / v.s;   // стартовый вид для lock
     }
 
     // Жесты: один палец — панорама, два — щипок (приближение вокруг середины между пальцами).
@@ -1458,7 +2221,9 @@
       const [u, w] = el._pixel, [px, py] = el._pivot;
       el.style.transform = `translate(${v.x + u * v.s}px, ${v.y + w * v.s}px) translate(${-px * 100}%, ${-py * 100}%)`;
     }
-  }, v => enterPath(v));   // кадр сада: любое приближение — сразу в отрезок 1–2
+  }, v => enterPath(v),   // кадр сада: любое приближение — сразу в отрезок 1–2
+  // Панорама в стартовом виде; лобби и паркинги на вертикальном экране (телефон, «Мобайл») — влево-вправо до краёв кадра.
+  () => ({ x: floors.classList.contains('garden') || W >= H, y: true }));
   const shotData = {};
   let floorCur = null, fittedSet = null;
   function loadShots(set) {   // camera.json и все кадры набора — сразу, чтобы переключение было мгновенным
@@ -1853,13 +2618,15 @@
     lobby: { name: 'lobby', json: ENTRY ? 'lobby_entry' : 'lobby', angle: 155 * 2, endDx: lobbyEndDx,
              sets: qs.has('flight') ? [qs.get('flight')] : ENTRY ? ['LobbyEntry', 'LobbyEntry_LQ', 'Lobby', 'Lobby_LQ'] : ['Lobby', 'Lobby_LQ'],
              fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
-    garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
+    // Сад: сначала LQ — тест камеры «смотрит на сад» (решение 2026-10-27); 4K Garden / GardenMobile ещё со старым наклоном,
+    // после их перерендера вернуть 4K первым.
+    garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden_LQ', 'Garden'], angle: 25 * 2,
               fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
     // Вертикальный пролёт в K_mobile (ue/garden_flight.py … mobile, решение 2026-10-26): видео 9:16, первый кадр —
     // середина кадра облёта 4:3 той же высоты, последний — K_mobile. Стартовый кадр облёта тот же, что у garden
     // (json — garden.json: garden_mobile.json пишется на рендер-машине и сюда не попадает). ?gmflight=<набор> — свой.
     gardenMobile: { name: 'garden_mobile', json: 'garden', master: MOBILE_FLIGHT_MASTER, angle: 25 * 2,
-                    sets: qs.has('gmflight') ? [qs.get('gmflight')] : ['GardenMobile', 'GardenMobile_LQ'],
+                    sets: qs.has('gmflight') ? [qs.get('gmflight')] : ['GardenMobile_LQ', 'GardenMobile'],
                     fwd: document.getElementById('gardenMobileFwd'), rev: document.getElementById('gardenMobileRev'),
                     startScale: () => orbitScale() * FLIGHT_MASTER.h / MOBILE_FLIGHT_MASTER.h,   // высота кадра облёта = высота видео
                     endScale: () => Math.max(W / MOBILE_FLIGHT_MASTER.w, H / MOBILE_FLIGHT_MASTER.h) },   // K_mobile cover
@@ -1897,12 +2664,14 @@
     v.style.transform = `translate(${(W - w * k) / 2 + dx}px, ${(H - h * k) / 2}px) scale(${k})`;
   }
   const nextFrame = () => new Promise(requestAnimationFrame);
+  window.orbitRotateTo = rotateTo;   // overlay.js: строка списка квартир поворачивает облёт на квартиру
   function rotateTo(deg) {   // докрутить облёт до угла кратчайшим путём
     const d = ((deg - angle) % 360 + 540) % 360 - 180;
     const from = angle, ms = Math.min(1200, 250 + Math.abs(d) * 5), t0 = performance.now();
     return new Promise(ok => (function step(now) {
       const t = Math.abs(d) < 0.01 ? 1 : Math.min(1, (now - t0) / ms);
       angle = target = from + d * easeIO(t);
+      movedAt = now;
       draw();
       if (t < 1) requestAnimationFrame(step); else ok();
     })(t0));
@@ -2024,7 +2793,8 @@
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js"
 } }
 </script>
 <script type="module" src="overlay.js"></script>

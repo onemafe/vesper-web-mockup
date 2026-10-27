@@ -4,13 +4,16 @@
 // Маска дома из рендера (orbitFrame.mask, белый = виден наш дом) умножается на готовый слой: там, где дом
 // в кадре закрыт деревьями, соседними домами и т.п., подсветки не видны.
 // ?debug=1 — окклюдер виден каркасом, подсветки включены сразу; ?apts=1 — подсветки включены сразу;
-// ?mask=0 — без маски; ?all=1 — подсветки всех 64 квартир, без фильтра по фиду.
+// ?mask=0 — без маски; ?all=1 — все 64 квартиры как доступные, без фильтра по фиду.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+// BVH для лучей в дом-окклюдер (~150 тыс. треугольников): поворот на квартиру из списка пускает сотни лучей.
+import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 
 const DATA = 'data/';
 const OCCLUDER = ['building_A_shell', 'building_B_shell', 'building_AB_shell'];
@@ -18,6 +21,10 @@ const OCCLUDER = ['building_A_shell', 'building_B_shell', 'building_AB_shell'];
 // Прозрачность в UE 0.02–0.05 при emissive; здесь подбирается на глаз под кадр.
 const FILL = { color: 0x9ecab8, opacity: 0.35 };
 const OUTLINE = { color: 0xb6d5c4, opacity: 0.7 };
+// Квартиры не в продаже («Показать недоступные» в панели квартир) — состояние 5 в UE: заливка тёмно-серая
+// linear 0.047 (≈ #3D3D3D, opacity 0.6 у A и 0.5 у B), обводка серая linear 0.505 (≈ #BCBCBC).
+const FILL_UNAVAILABLE = { color: 0x3d3d3d, opacity: 0.5 };
+const OUTLINE_UNAVAILABLE = { color: 0xbcbcbc, opacity: 0.7 };
 // Выбранная квартира (как состояние 0 в UE): заливки нет, контур ярче.
 // Обводка из UE — тонкая лента (в кадре ~1 px), поэтому поверх рисуется граница заливки толстой линией.
 const OUTLINE_SELECTED = { color: 0xffffff, opacity: 1, widthPx: 3 };
@@ -42,7 +49,7 @@ highlights.renderOrder = 1;
 scene.add(highlights);
 const occluder = new THREE.Group();
 scene.add(occluder);
-const apartments = new Map();   // apartmentId → { fills: [Mesh], outlines: [Mesh] }
+const apartments = new Map();   // apartmentId → { node, available, fills: [Mesh], outlines: [Mesh], outlineMat }
 let selected = null;
 let hlRoot = null;    // сцена highlights.glb
 
@@ -56,6 +63,12 @@ const fillMat = new THREE.MeshBasicMaterial({ color: FILL.color, transparent: tr
                                               depthWrite: false, side: THREE.DoubleSide });
 const outlineMat = new THREE.MeshBasicMaterial({ color: OUTLINE.color, transparent: true, opacity: OUTLINE.opacity,
                                                  depthWrite: false, side: THREE.DoubleSide });
+const fillUnavailMat = new THREE.MeshBasicMaterial({ color: FILL_UNAVAILABLE.color, transparent: true,
+                                                     opacity: FILL_UNAVAILABLE.opacity,
+                                                     depthWrite: false, side: THREE.DoubleSide });
+const outlineUnavailMat = new THREE.MeshBasicMaterial({ color: OUTLINE_UNAVAILABLE.color, transparent: true,
+                                                        opacity: OUTLINE_UNAVAILABLE.opacity,
+                                                        depthWrite: false, side: THREE.DoubleSide });
 const outlineSelMat = new THREE.MeshBasicMaterial({ color: OUTLINE_SELECTED.color, transparent: true,
                                                     opacity: OUTLINE_SELECTED.opacity,
                                                     depthWrite: false, side: THREE.DoubleSide });
@@ -175,14 +188,26 @@ const PLACES = {
   garden: [-9410, -1770, 14340],   // BP_CourtyardItem_C_1, WBP_Courtyard
   lobby:  [-6100,   210, 14340],   // BP_LobbyItem_C_1, WBP_Lobby
 };
+// Кадры облёта HQ (orbit_NNN, шаг 2°), на которых иконка видна; на остальных точка за домом — скрыта
+// (подобрано пользователем по ?frame, 2026-10-27). Диапазон включительно, from > to — через 0 (orbit_179 → orbit_000).
+const SHOWN_FRAMES = {
+  garden: [[0, 107]],
+  lobby:  [[85, 14]],
+};
+const HQ_STEP_DEG = 2;
+function shownAt(place, angle) {
+  const k = Math.round(((angle % 360 + 360) % 360) / HQ_STEP_DEG) % (360 / HQ_STEP_DEG);
+  return (SHOWN_FRAMES[place] || []).some(([a, b]) => a <= b ? k >= a && k <= b : k >= a || k <= b);
+}
 const placeEls = [...document.querySelectorAll('[data-place]')]
-  .map(el => ({ el, p: ue(...PLACES[el.dataset.place]) }));
+  .map(el => ({ el, place: el.dataset.place, p: ue(...PLACES[el.dataset.place]) }));
 const ndc = new THREE.Vector3();
 function placeIcons(f) {
   const k = f.designW / f.width;   // px canvas → px экрана дизайна
-  for (const { el, p } of placeEls) {
+  for (const { el, place, p } of placeEls) {
     ndc.copy(p).project(camera);
-    const inFront = !visible && ndc.z > -1 && ndc.z < 1;   // в режиме «квартиры» иконки скрыты
+    // В режиме «квартиры» иконки скрыты; за домом — по таблице кадров SHOWN_FRAMES.
+    const inFront = !visible && ndc.z > -1 && ndc.z < 1 && shownAt(place, f.angle);
     el.style.display = inFront ? 'flex' : 'none';
     if (!inFront) continue;
     const x = (ndc.x + 1) / 2 * f.width * k, y = (1 - ndc.y) / 2 * f.height * k;
@@ -190,21 +215,102 @@ function placeIcons(f) {
   }
 }
 
+// Центр квартиры и направление её фасада (горизонталь, наружу от центра облёта) — мировые координаты glTF.
+// Нормаль — сумма нормалей треугольников заливки по площади, каждая развёрнута наружу (обход вершин в UE любой).
+function aptGeom(apt) {
+  if (apt.geom) return apt.geom;
+  hlRoot.updateWorldMatrix(true, true);
+  const box = new THREE.Box3();
+  apt.fills.forEach(m => box.expandByObject(m));
+  const c = box.getCenter(new THREE.Vector3());
+  const P = cam.orbit.pivot, out = c.clone().sub(ue(P[0], P[1], P[2])).setY(0).normalize();
+  const n = new THREE.Vector3(), v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  for (const m of apt.fills) {
+    const pos = m.geometry.attributes.position, idx = m.geometry.index;
+    const count = idx ? idx.count : pos.count;
+    for (let t = 0; t + 2 < count; t += 3) {
+      for (let j = 0; j < 3; j++) v[j].fromBufferAttribute(pos, idx ? idx.getX(t + j) : t + j).applyMatrix4(m.matrixWorld);
+      e1.subVectors(v[1], v[0]).cross(e2.subVectors(v[2], v[0]));
+      n.addScaledVector(e1, e1.dot(out) < 0 ? -1 : 1);
+    }
+  }
+  n.setY(0);
+  if (n.lengthSq() < 1e-9) n.copy(out);
+  // Точки для проверки видимости: вершины заливки, сдвинутые на 0.3 м к центру (не на самом ребре), не больше 32.
+  const pts = [];
+  for (const m of apt.fills) {
+    const pos = m.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) pts.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld));
+  }
+  const step = Math.max(1, Math.ceil(pts.length / 32));
+  const samples = pts.filter((_, i) => i % step === 0).map(p => p.lerp(c, 0.3 / Math.max(0.3, p.distanceTo(c))));
+  return apt.geom = { c, n: n.normalize(), samples };
+}
+
+// Лучший угол облёта на квартиру (строка списка панели), кадры через 2°: доля точек квартиры, до которых луч из камеры
+// не упирается в дом-окклюдер, × насколько фасад смотрит в камеру; штраф — за поворот и за край экрана.
+// Сначала грубо через 10°, потом точнее ±8° вокруг лучшего.
+function bestAngle(id) {
+  const { c, n, samples } = aptGeom(apartments.get(id));
+  const from = window.orbitFrame ? window.orbitFrame.angle : 0, to = new THREE.Vector3();
+  const score = a => {
+    placeCamera(a);
+    let seen = 0;
+    for (const p of samples) {
+      to.subVectors(p, camera.position);
+      const dist = to.length();
+      raycaster.set(camera.position, to.normalize());
+      const wall = raycaster.intersectObject(occluder, true)[0];
+      if (!wall || wall.distance + OCCLUSION_TOLERANCE_M >= dist) seen++;
+    }
+    to.subVectors(c, camera.position).normalize();
+    const front = Math.max(0, -(to.x * n.x + to.z * n.z));
+    const turn = Math.abs(((a - from) % 360 + 540) % 360 - 180);
+    // Квартира у бокового края экрана (узкий телефон режет кадр по бокам) — хуже: проекция с обрезкой текущего вида.
+    camera.updateMatrixWorld();
+    const edge = Math.max(0, Math.abs(c.clone().project(camera).x) - 0.5);
+    return seen / samples.length * (0.4 + 0.6 * front) - turn / 180 * 0.1 - edge;
+  };
+  let best = from, bestScore = -Infinity;
+  const tryAngle = a => { a = (a % 360 + 360) % 360; const s = score(a); if (s > bestScore) { bestScore = s; best = a; } };
+  for (let a = 0; a < 360; a += 10) tryAngle(a);
+  const coarse = best;
+  for (let a = coarse - 8; a <= coarse + 8; a += 2) tryAngle(a);
+  return best;
+}
+
+// Где центр квартиры по высоте полного кадра облёта с углом a (0 — верх, 1 — низ): index.html по нему поднимает кадр
+// так, чтобы квартира встала между логотипом и карточкой (телефон).
+function frameY(id, a) {
+  const f = window.orbitFrame;
+  if (!f) return null;
+  const { c } = aptGeom(apartments.get(id));
+  placeCamera(a);
+  camera.aspect = f.coverW / f.coverH;
+  camera.fov = 2 * Math.atan(Math.tan(cam.camera.hFovDeg * Math.PI / 360) / camera.aspect) * 180 / Math.PI;
+  camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  return (1 - c.clone().project(camera).y) / 2;   // камеру вернёт render()
+}
+
 // Выбор квартиры: заливка выбранной скрыта, контур — outlineSelMat. id = null — снять выбор.
-// Наружу — событие 'apartmentselect' на #screen с detail.id.
-function select(id) {
+// Наружу — событие 'apartmentselect' на #screen с detail.id и detail.frameY (см. frameY) для угла a.
+function select(id, a = window.orbitFrame ? window.orbitFrame.angle : 0) {
   if (id === selected) return;
   const set = (apt, on) => {
     if (!apt) return;
     if (on && !apt.contour) highlights.add(apt.contour = buildContour(apt.fills));
     if (apt.contour) apt.contour.visible = on;
     apt.fills.forEach(m => { m.visible = !on; });
-    apt.outlines.forEach(m => { m.material = on ? outlineSelMat : outlineMat; m.renderOrder = on ? 3 : 2; });
+    apt.outlines.forEach(m => { m.material = on ? outlineSelMat : apt.outlineMat; m.renderOrder = on ? 3 : 2; });
   };
   set(apartments.get(selected), false);
   selected = id;
   set(apartments.get(selected), true);
-  screen.dispatchEvent(new CustomEvent('apartmentselect', { detail: { id } }));
+  const fy = id && cam ? frameY(id, a) : null;
+  screen.dispatchEvent(new CustomEvent('apartmentselect', { detail: { id, frameY: fy } }));
   render();
 }
 
@@ -212,12 +318,34 @@ function setVisible(v) {
   visible = v;
   highlights.visible = v;
   button.classList.toggle('on', v);
+  screen.classList.toggle('apts-on', v);   // панель квартир слева (ПК) — index.html
   if (!v) select(null);
   render();
 }
 button.addEventListener('click', () => setVisible(!visible));
 screen.addEventListener('apartmentclear', () => select(null));   // крестик попапа квартиры в index.html
+// Строка списка панели квартир (index.html) — выбрать квартиру.
+// Облёт поворачивается на неё (window.orbitRotateTo из index.html).
+screen.addEventListener('apartmentpick', e => {
+  const id = e.detail.id;
+  if (!apartments.has(id) || !cam) return;
+  const a = bestAngle(id);
+  window.orbitRotateTo?.(a);
+  select(id, a);
+});
 button.classList.toggle('on', visible);
+screen.classList.toggle('apts-on', visible);
+
+// Фильтры панели квартир (index.html, window.aptFilterIds: Set или null — все): подсветки не прошедших фильтр
+// спрятаны и не выбираются; выбранная, не прошедшая фильтр, снимается. Квартиры не в продаже видны, только если
+// включено «Показать недоступные» (window.aptUnavailable — проверка id по корпусу и этажу).
+function applyFilter() {
+  const ids = window.aptFilterIds, unavailable = window.aptUnavailable;
+  for (const [id, apt] of apartments) apt.node.visible = apt.available ? !ids || ids.has(id) : !!unavailable?.(id);
+  if (selected && !apartments.get(selected)?.node.visible) select(null);
+  render();
+}
+screen.addEventListener('apartmentfilter', applyFilter);
 screen.addEventListener('orbitframe', render);
 
 // Тап по квартире. Луч бьёт и в окклюдер: квартира выбирается, только если её подсветка не за домом
@@ -228,7 +356,9 @@ function pick(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   raycaster.setFromCamera(new THREE.Vector2((clientX - r.left) / r.width * 2 - 1,
                                             -((clientY - r.top) / r.height) * 2 + 1), camera);
-  const hit = hlRoot && raycaster.intersectObject(hlRoot, true)[0];   // без контуров
+  // Без контуров; квартиры, спрятанные фильтром, пропускаем (луч их не замечает сам).
+  const visibleHit = h => { let o = h.object; while (o) { if (!o.visible) return false; o = o.parent; } return true; };
+  const hit = hlRoot && raycaster.intersectObject(hlRoot, true).find(visibleHit);
   if (!hit) return null;
   const wall = raycaster.intersectObject(occluder, true)[0];
   if (wall && wall.distance + OCCLUSION_TOLERANCE_M < hit.distance) return null;
@@ -250,36 +380,42 @@ pano.addEventListener('pointerup', e => {
 
 const loader = new GLTFLoader();
 const load = name => loader.loadAsync(DATA + 'building/' + name + '.glb');
-// Фид застройщика (tools/apartments_export.py): подсветки только у активных квартир.
-// Нет файла — показываем все 64 (null). ?all=1 — тоже все, для проверки.
+// Фид CRM застройщика (crm.js): зелёные подсветки только у активных квартир, остальные — серые «недоступные».
+// Фида нет — все 64 активные (null). ?all=1 — тоже все, для проверки.
 const ACTIVE_STATUSES = ['AVAILABLE'];
-const loadFeed = () => params.has('all') ? Promise.resolve(null)
-  : fetch(DATA + 'apartments/apartments.json').then(r => r.ok ? r.json() : null).catch(() => null);
+const loadFeed = () => params.has('all') ? Promise.resolve(null) : window.aptFeed.catch(() => null);
 
 (async () => {
   cam = await (await fetch(DATA + 'orbit_main/camera.json')).json();
 
   for (const g of await Promise.all(OCCLUDER.map(load))) {
-    g.scene.traverse(o => { if (o.isMesh) { o.material = occluderMat; o.renderOrder = 0; } });
+    g.scene.traverse(o => {
+      if (!o.isMesh) return;
+      o.material = occluderMat; o.renderOrder = 0;
+      o.geometry.computeBoundsTree();
+      o.raycast = acceleratedRaycast;
+    });
     occluder.add(g.scene);
   }
 
   const [hl, feed] = await Promise.all([load('highlights'), loadFeed()]);
   // Узлы верхнего уровня = apartmentId, например 1-07-01; внутри — меши заливки и обводки.
-  // Неактивные квартиры (нет в фиде или статус не из ACTIVE_STATUSES) убираем совсем: не видны и не выбираются.
+  // Неактивные квартиры (нет в фиде или статус не из ACTIVE_STATUSES) — серые и спрятаны, пока не включено
+  // «Показать недоступные» (applyFilter).
   for (const node of [...hl.scene.children]) {
-    if (feed && !ACTIVE_STATUSES.includes(feed[node.name]?.status)) { node.removeFromParent(); continue; }
-    const apt = { fills: [], outlines: [] };
+    const available = !feed || ACTIVE_STATUSES.includes(feed[node.name]?.status);
+    const apt = { node, available, fills: [], outlines: [], outlineMat: available ? outlineMat : outlineUnavailMat };
     node.traverse(o => {
       if (!o.isMesh) return;
       const outline = o.material.name === 'outline';
-      o.material = outline ? outlineMat : fillMat;
+      o.material = outline ? apt.outlineMat : available ? fillMat : fillUnavailMat;
       o.renderOrder = outline ? 2 : 1;
       (outline ? apt.outlines : apt.fills).push(o);
     });
     apartments.set(node.name, apt);
   }
   highlights.add(hlRoot = hl.scene);
+  applyFilter();
   const pre = params.get('apt');   // ?apt=1-07-01 — сразу выбрать квартиру (для проверки)
   if (pre && apartments.has(pre)) select(pre);
   render();
