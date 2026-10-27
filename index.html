@@ -171,6 +171,7 @@
   }
   .mapview.open { opacity: 1; visibility: visible; }
   .mapview img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; }
+  #mapLayer { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
   .mapview .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                       color: #b9d2c2; font-size: 14px; pointer-events: none; }
   #screen.map-on .place, #screen.map-on .hint, #screen.map-flight .place, #screen.map-flight .hint { visibility: hidden; }
@@ -717,7 +718,7 @@
     <video id="mapRev" muted playsinline preload="auto"></video>
   </div>
   <div class="mapview" id="mapView">
-    <img id="mapImg" alt="" draggable="false">
+    <div id="mapLayer"><img id="mapImg" alt="" draggable="false"></div>   <!-- кадр целиком + плитки 16K (mapTiles) -->
     <div class="loading" id="mapLoading">Загрузка…</div>
   </div>
 
@@ -2061,8 +2062,9 @@
   function panZoom(root, maxZoom, render, zoomIn, lock) {
     const v = { s: 1, x: 0, y: 0, min: 1, cover: 1, iw: 0, ih: 0, cx: null, cy: 0 };
     const clamp = (p, lo, hi) => lo >= hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, p));
+    const maxS = () => v.cover * (typeof maxZoom === 'function' ? maxZoom(v) : maxZoom);   // функция — карта 16K
     function apply() {
-      v.s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s));
+      v.s = Math.min(maxS(), Math.max(v.min, v.s));
       // Картинка больше экрана — края не открываем; меньше — по центру.
       const w = v.iw * v.s, h = v.ih * v.s;
       v.x = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, v.x));
@@ -2079,7 +2081,7 @@
     }
     function zoom(k, cx, cy) {   // приблизить в k раз вокруг точки (cx, cy) экрана дизайна
       if (k > 1 && zoomIn?.(v)) return;
-      const s = Math.min(v.cover * maxZoom, Math.max(v.min, v.s * k));
+      const s = Math.min(maxS(), Math.max(v.min, v.s * k));
       v.x = cx - (cx - v.x) * s / v.s; v.y = cy - (cy - v.y) * s / v.s; v.s = s;
       apply();
     }
@@ -2560,16 +2562,80 @@
   // data/map/camera.json). Включается видеопереходом с облёта (блок «Пролёты», FLIGHTS.map); шапка и док остаются.
   // Старт чуть ближе полного кадра — MAP_START_ZOOM (?mapzoom=), дальше старта не отдаляется, приближение — до MAP_MAX_ZOOM
   // от полного кадра. Включают кнопка карты и пункт меню «РАЙОН», выключают та же кнопка и «ОБЩИЙ ВИД»; ?map — сразу.
+  // С 2026-10-27 кадр карты — последний кадр пролёта, отрендеренный отдельно (ue/map_flight.py, RENDER.md раздел 7):
+  // 4:3, тот же горизонтальный угол, середина 16:9 = map_M. Набор картинки идёт парой с набором видео (MAP_END): Map —
+  // 16K плитками (Flight/MapEnd/map_end_075/tiles.json: превью сразу, плитки 4096 — только видимые и только когда превью
+  // мельче пикселя экрана), Map_LQ — 960×720 одной картинкой. Видео без своей картинки пропускается; нет ни одной — как
+  // раньше: видео Map и map_M. Старт — тот же вид, что у map_M (полоса 16:9 на весь экран × MAP_START_ZOOM), на телефоне
+  // сверху и снизу — запас 4:3 для панорамы. ?mapend=0 — прежний map_M.
   const MAP_SRC = 'renders/Floors_Test/map_M.webp';
+  const MAP_END = { Map: 'MapEnd', Map_LQ: 'MapEnd_LQ' }, MAP_END_NAME = 'map_end_075';
   const MAP_START_ZOOM = +qs.get('mapzoom') || 1.25;
   const MAP_MAX_ZOOM = 3;
   const mapView = document.getElementById('mapView');
+  const mapLayer = document.getElementById('mapLayer');
   const mapImg = document.getElementById('mapImg');
   const mapLoading = document.getElementById('mapLoading');
   const mapBtn = document.getElementById('dockMap');
-  const mapPZ = panZoom(mapView, MAP_MAX_ZOOM, v => { mapImg.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`; });
-  mapImg.onload = () => { mapLoading.style.display = 'none'; mapPZ.reset(mapImg.naturalWidth, mapImg.naturalHeight, MAP_START_ZOOM); };
-  mapImg.onerror = () => { mapLoading.textContent = `Нет кадра web/${MAP_SRC} — запустите sync.cmd`; };
+  let mapSrc = { src: MAP_SRC }, mapFull = null;   // mapSrc: { src } или { tiles, dir }; mapFull — размер полного кадра
+  let mapPicked = Promise.resolve();   // выбор набора пролёта и картинки карты (pickMapSet, блок «Пролёты»)
+  const mapTiles = new Map();   // 'ряд_столбец' → <img> загруженной плитки
+  async function findMapEnd(set) {   // картинка конца пролёта набора set, нет — null
+    if (qs.get('mapend') === '0' || !MAP_END[set]) return null;
+    const base = `${FLIGHT_DIR}${MAP_END[set]}/${MAP_END_NAME}`;
+    try {
+      const r = await fetch(`${base}/tiles.json`);
+      if (r.ok) return { tiles: await r.json(), dir: `${base}/` };
+    } catch {}
+    try {
+      if ((await fetch(`${base}.webp`, { method: 'HEAD' })).ok) return { src: `${base}.webp` };
+    } catch {}
+    return null;
+  }
+  // Предел приближения: у 16K — до пикселя картинки на пиксель экрана, не меньше MAP_MAX_ZOOM.
+  const mapMaxZoom = v => Math.max(MAP_MAX_ZOOM, 1 / (scale * devicePixelRatio * v.cover));
+  const mapPZ = panZoom(mapView, v => mapSrc.tiles ? mapMaxZoom(v) : MAP_MAX_ZOOM, v => {
+    mapLayer.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`;
+    updateMapTiles(v);
+  });
+  function updateMapTiles(v) {
+    const t = mapSrc.tiles;
+    const want = new Set();
+    // плитки нужны, когда превью на экране крупнее своего разрешения
+    if (t && v.s * scale * devicePixelRatio > (mapImg.naturalWidth || t.width) / t.width) {
+      const x0 = -v.x / v.s, x1 = (W - v.x) / v.s, y0 = -v.y / v.s, y1 = (H - v.y) / v.s;
+      for (let r = Math.max(0, Math.floor(y0 / t.tile)); r <= Math.min(t.rows - 1, Math.floor(y1 / t.tile)); r++)
+        for (let c = Math.max(0, Math.floor(x0 / t.tile)); c <= Math.min(t.cols - 1, Math.floor(x1 / t.tile)); c++)
+          want.add(`${r}_${c}`);
+    }
+    for (const [k, img] of mapTiles) if (!want.has(k)) { img.remove(); mapTiles.delete(k); }   // память — только видимым
+    for (const k of want) {
+      if (mapTiles.has(k)) continue;
+      const [r, c] = k.split('_').map(Number), img = new Image();
+      img.alt = ''; img.draggable = false;
+      img.style.cssText = `left:${c * t.tile}px; top:${r * t.tile}px; width:${Math.min(t.tile, t.width - c * t.tile)}px; ` +
+                          `height:${Math.min(t.tile, t.height - r * t.tile)}px; opacity:0; transition:opacity .2s`;
+      img.onload = () => { img.style.opacity = 1; };
+      img.src = `${mapSrc.dir}${k}.webp`;
+      mapTiles.set(k, img);
+      mapLayer.appendChild(img);
+    }
+  }
+  function mapReset() {   // старт: полоса 16:9 полного кадра на весь экран × MAP_START_ZOOM (как прежний map_M и конец видео)
+    const { w, h } = mapFull, cover = Math.max(W / w, H / h);
+    mapPZ.reset(w, h, Math.max(W / w, H / (w * 9 / 16)) * MAP_START_ZOOM / cover);
+  }
+  function loadMap() {
+    if (mapImg.getAttribute('src')) return;
+    mapImg.src = mapSrc.tiles ? mapSrc.dir + mapSrc.tiles.preview : mapSrc.src;
+  }
+  mapImg.onload = () => {
+    mapLoading.style.display = 'none';
+    mapFull = mapSrc.tiles ? { w: mapSrc.tiles.width, h: mapSrc.tiles.height } : { w: mapImg.naturalWidth, h: mapImg.naturalHeight };
+    mapImg.style.width = `${mapFull.w}px`; mapImg.style.height = `${mapFull.h}px`;   // превью растянуто до полного кадра
+    mapReset();
+  };
+  mapImg.onerror = () => { mapLoading.textContent = `Нет кадра web/${mapImg.getAttribute('src')} — запустите sync.cmd`; };
   function setMap(on) {
     if (on) {
       // Карта — отдельный вид: режим «квартиры» и попап выключаем.
@@ -2577,8 +2643,8 @@
       closeTimeSlider();
       const apts = document.getElementById('apts');
       if (apts.classList.contains('on')) apts.click();
-      if (!mapImg.getAttribute('src')) mapImg.src = MAP_SRC;
-      else if (mapImg.naturalWidth) mapPZ.reset(mapImg.naturalWidth, mapImg.naturalHeight, MAP_START_ZOOM);   // каждый раз со старта
+      if (!mapImg.getAttribute('src')) loadMap();
+      else if (mapFull) mapReset();   // каждый раз со старта
     }
     mapView.classList.toggle('open', on);
     mapBtn.classList.toggle('on', on);
@@ -2590,7 +2656,6 @@
   mapBtn.onclick = () => mapView.classList.contains('open') ? mapOff() : mapOn();
   document.getElementById('menuMap').addEventListener('click', () => { closeScreens(); mapOn(); });
   document.getElementById('apts').addEventListener('click', () => setMap(false));   // режим «квартиры» — на облёте
-  if (qs.has('map')) setMap(true);
 
   // --- Пролёты с облёта: → лобби (ue/flight_render.py, Docs/RENDER.md раздел 5) и → сад, кадр K (ue/garden_flight.py,
   // раздел 6); видео — tools/flight_video.py ---
@@ -2650,9 +2715,17 @@
       if (++f.set < f.sets.length) src();
       else { f.ok = false; console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`); }
     };
-    src();
+    if (f === FLIGHTS.map) mapPicked = pickMapSet(f).then(src);   // набор видео — тот, у которого есть картинка конца
+    else src();
     f.fwd.master = f.rev.master = f.master || FLIGHT_MASTER;   // по нему placeVideo
   }
+  async function pickMapSet(f) {
+    for (let i = 0; i < f.sets.length; i++) {
+      const end = await findMapEnd(f.sets[i]);
+      if (end) { f.set = i; mapSrc = end; return; }
+    }
+  }
+  if (qs.has('map')) mapPicked.then(() => setMap(true));
   const easeIO = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;   // как у камеры приложения (степень 2)
   const orbitScale = () => Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // px дизайна на px мастер-кадра
   const floorScale = () => Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);
@@ -2753,8 +2826,9 @@
     loadShots('garden'); preparePath();   // кадр K и отрезок 1–2 грузятся, пока летим
     return flyTo(gardenFlight(), openGarden);
   }
-  function flyToMap() {
-    if (!mapImg.getAttribute('src')) mapImg.src = MAP_SRC;   // кадр карты грузится, пока летим
+  async function flyToMap() {
+    await mapPicked;   // набор видео и картинка карты выбраны парой
+    loadMap();         // кадр карты грузится, пока летим
     return flyTo(FLIGHTS.map, FLIGHTS.map.open);
   }
   async function flyBack(f = floors.classList.contains('garden') ? gardenFlight(floorCur) : FLIGHTS.lobby) {
