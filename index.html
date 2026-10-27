@@ -191,7 +191,7 @@
      .pn — новый (по умолчанию), .po — прежний по макету Figma (screen data-popup="old"). */
   #screen.wide .apt-card :is(.ph, .pn, .po), #screen:not(.wide) .apt-card .pc { display: none; }
   #screen:not(.wide)[data-popup="old"] .apt-card .pn, #screen:not(.wide):not([data-popup="old"]) .apt-card .po,
-  #screen:not(.wide):not([data-popup="old"]) #aptPlan { display: none; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-plan img:not(.pn) { display: none; }
   /* Лист плана застройщика (Plans/<id>.jpg, все 1400×990) — целиком, вписан в окно по центру на белой подложке, как в
      WBP_ApartmentWindow UE (решение 2026-10-27; раньше был кроп без полей листа). */
   .apt-plan { position: absolute; left: 0; top: 0; width: 100%; height: 170px; overflow: hidden; background: #fff; }
@@ -395,6 +395,31 @@
   #screen:not(.wide):not([data-popup="old"]) .apt-nav.close {
     left: calc(342px + var(--dx)); top: calc(568px + var(--db)); width: 36px; height: 36px;
   }
+  /* Новый попап листается по списку квартир (решение 2026-10-27, два варианта на сравнение): «свайп» (data-popup="swipe")
+     — карусель, по краям экрана видны соседние карточки (шаг 342 + 16), при первом открытии карточка сама показывает
+     следующую; «стрелки» (data-popup="arrows") — круглые кнопки по бокам, соседние карточки видны только во время
+     перелистывания. Свайп работает в обоих. Счётчик «3 / 24» — в строке номера справа. Двигает карточки скрипт
+     (aptCarousel). */
+  .apt-card.side { pointer-events: none; }
+  #screen.wide .apt-card.side, #screen[data-popup="old"] .apt-card.side, .apt-card.side.none,
+  #screen[data-popup="arrows"] .apt-popup:not(.moving) .apt-card.side { visibility: hidden; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-card { touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* Картинки карточки (план, сердце) не тащатся браузером — иначе свайп по плану перетаскивает картинку. */
+  .apt-card img { -webkit-user-drag: none; -webkit-touch-callout: none; }
+  .apt-card .count { display: none; }
+  #screen:not(.wide):not([data-popup="old"]) .apt-card .count {
+    display: block; position: absolute; left: 12px; top: 13px; width: 136px; text-align: right;
+    font-size: 12px; line-height: 15px; color: #b9d2c2; pointer-events: none;
+  }
+  .apt-nav.step { display: none; }
+  #screen:not(.wide)[data-popup="arrows"] .apt-nav.step {
+    display: block; top: calc(641px + var(--db)); width: 32px; height: 32px;
+    transition: opacity .2s, visibility .2s, background-color .2s;
+  }
+  #screen:not(.wide)[data-popup="arrows"] .apt-nav.step.none { opacity: 0; visibility: hidden; }
+  .apt-nav.prev { left: calc(6px + var(--dx)); }
+  .apt-nav.next { left: calc(392px + var(--dx)); }
+  .apt-nav.step svg { display: block; width: 14px; height: 14px; margin: auto; }
 
   /* 3D-план квартиры на весь экран (кнопка ПЛАН попапа). Макета нет: только крестик, как у меню. */
   .plan3d {
@@ -756,6 +781,7 @@
     <div class="apt-card">
       <div class="apt-plan"><img id="aptPlan" alt=""><img class="pn" id="aptPlanSq" alt=""></div>
       <div class="num" id="aptNum"></div>
+      <div class="count"></div>
       <div class="kind" id="aptKind"></div>
       <div class="floor" id="aptFloor"></div>
       <img class="heart" id="aptHeart" src="assets/icon-heart-outline.svg" alt="В избранное" role="button">
@@ -766,6 +792,8 @@
       </div>
     </div>
     <button class="apt-nav lg close" id="aptClose" aria-label="Закрыть"><img src="assets/icon-close.svg" alt=""></button>
+    <button class="apt-nav lg step prev" id="aptPrev" aria-label="Предыдущая квартира"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 2.5L4 7l4.5 4.5"/></svg></button>
+    <button class="apt-nav lg step next" id="aptNext" aria-label="Следующая квартира"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2.5L10 7l-4.5 4.5"/></svg></button>
   </div>
 
   <div class="apt-panel" id="aptPanel" data-tab="filters">
@@ -1035,10 +1063,13 @@
   // На ПК кнопка в углу окна переключает вид: «ПК» — широкий, на всё окно; «Мобайл» — экран макета 430×932
   // с нарисованной адресной строкой Safari, вписан в окно. ?sim=1 — сразу «Мобайл».
   const SIMS = [{ name: 'ПК' }, { name: 'Мобайл', mobile: true }];
-  // Карточка квартиры телефона: «Стало» — новая, «Было» — прежняя по макету Figma. На ПК кнопка рядом с «ПК / Мобайл»,
-  // видна только при «Мобайл» и открытой карточке; ?popup=old — сразу «Было» (и на телефоне).
-  let popupOld = qs.get('popup') === 'old';
-  screen.dataset.popup = popupOld ? 'old' : 'new';
+  // Карточка квартиры телефона: «Было» — прежняя по макету Figma, «Стало» — новая в двух вариантах листания (свайп /
+  // стрелки, см. aptCarousel). На ПК кнопка рядом с «ПК / Мобайл» перебирает их, видна только при «Мобайл» и открытой
+  // карточке; ?popup=old|swipe|arrows — сразу нужный (и на телефоне).
+  const POPUPS = [{ id: 'old', name: 'Было' }, { id: 'swipe', name: 'Стало: свайп' }, { id: 'arrows', name: 'Стало: стрелки' }];
+  let popupIdx = Math.max(1, POPUPS.findIndex(p => p.id === qs.get('popup')));
+  if (qs.get('popup') === 'old') popupIdx = 0;
+  screen.dataset.popup = POPUPS[popupIdx].id;
   let sim = Math.min(+qs.get('sim') || 0, SIMS.length - 1);
   // Рядом — кнопка меню ПК (виден только при «ПК»): верх / слева / бургер (см. .pcnav). ?nav=top|side|burger.
   // На телефоне боком (тоже .wide) — бургер.
@@ -1062,11 +1093,12 @@
       fit(); gardenRefit();
     });
     const pb = bar.insertBefore(button(() => {
-      popupOld = !popupOld; screen.dataset.popup = popupOld ? 'old' : 'new'; pbShow();
+      popupIdx = (popupIdx + 1) % POPUPS.length; screen.dataset.popup = POPUPS[popupIdx].id; pbShow();
+      screen.dispatchEvent(new Event('popupvariant'));   // свайп — снова показать подсказку (aptCarousel)
     }), b);
     const aptPopupEl = document.getElementById('aptPopup');
     const pbShow = () => {
-      pb.textContent = popupOld ? 'Было' : 'Стало';
+      pb.textContent = POPUPS[popupIdx].name;
       pb.style.display = SIMS[sim].mobile && aptPopupEl.classList.contains('open') ? '' : 'none';
     };
     new MutationObserver(pbShow).observe(aptPopupEl, { attributes: true, attributeFilter: ['class'] });
@@ -1854,29 +1886,168 @@
     .catch(e => console.error('apartments:', e));
   const fmt = (v, digits) => v.toLocaleString('ru-RU', { maximumFractionDigits: digits });
   function showApartment(id) {
+    const opened = !!id && !aptShown;
+    if (id !== aptShown) aptFrom = pickFrom || 'list';   // сердце перерисовывает ту же квартиру — список тот же
     aptShown = id;
     popup.classList.toggle('open', !!id);
     if (!id) return;
+    fillCard(aptCard, id);
+    aptCarousel.update(opened);
+  }
+  // Карточка root (основная или соседняя в карусели) — данные квартиры id.
+  function fillCard(root, id) {
     const a = aptData[id];
     const floor = a ? a.floor : +id.split('-')[1];
-    aptPlan.src = `data/apartments/plans/${id}.jpg`;
-    aptPlanSq.src = `data/apartments/plans_sq/${id}.jpg`;
+    const [plan, planSq] = root.querySelectorAll('.apt-plan img');
+    plan.src = `data/apartments/plans/${id}.jpg`;
+    planSq.src = `data/apartments/plans_sq/${id}.jpg`;
     // ПК — строки как в WBP_ApartmentWindow (номер, спальни, площадь, этаж, цена — столбиком), телефон — как в макете.
     const status = a ? a.statusText : 'Нет в продаже';
     const bedrooms = a ? `${a.rooms} ${a.rooms === 1 ? 'спальня' : a.rooms < 5 ? 'спальни' : 'спален'}` : '';
     const price = a && a.price ? `${fmt(a.price / 1e6, 1)} млн` : '';
     // .pc — ПК, .po — прежний попап телефона, .pn — новый (см. CSS .apt-card).
     const number = a ? a.number : id, area = a ? `${fmt(a.area, 2)} м²` : '';
-    document.getElementById('aptNum').innerHTML = `<span class="pc">Квартира ${number}` +
+    root.querySelector('.num').innerHTML = `<span class="pc">Квартира ${number}` +
       `${a && a.status === 'AVAILABLE' ? '' : ` · ${status}`}</span>` +
       `<span class="po">${number} | ${status}</span><span class="pn">${number}<small>${status}</small></span>`;
-    document.getElementById('aptKind').innerHTML = a ? `<span class="pc">${bedrooms}<br>${area}</span>` +
+    root.querySelector('.kind').innerHTML = a ?`<span class="pc">${bedrooms}<br>${area}</span>` +
       `<span class="po">${a.rooms}к квартира<br>${area}</span><span class="pn">${a.rooms}к · ${area}</span>` : '';
-    document.getElementById('aptFloor').innerHTML = `<span class="pc">${floor} этаж${price ? `<br>${price} ₽` : ''}</span>` +
+    root.querySelector('.floor').innerHTML = `<span class="pc">${floor} этаж${price ? `<br>${price} ₽` : ''}</span>` +
       `<span class="po">${floor} этаж${price ? `<br>${price}` : ''}</span>` +
       `<span class="pn">${floor} этаж${price ? ` · ${price}` : ''}</span>`;
-    aptHeart.src = favs.has(id) ? 'assets/icon-favorite.svg' : 'assets/icon-heart-outline.svg';
+    root.querySelector('.heart').src = favs.has(id) ? 'assets/icon-favorite.svg' : 'assets/icon-heart-outline.svg';
   }
+
+  // --- Листание карточки телефона по списку квартир (новый попап; варианты «свайп» и «стрелки», см. POPUPS) ---
+  // Список — тот, из которого открыта квартира: «Избранное» или отфильтрованные в порядке фида (тап по подсветке —
+  // тоже отфильтрованные). Квартиры нет в списке — листать нечего. Перелистнули — 'apartmentpick', как строка списка:
+  // облёт поворачивается на квартиру, подсветка и карточка меняются. Карточки — основная и две соседние (копии
+  // разметки), сдвиг sx — общий: карточка идёт за пальцем, отпустили дальше 30 % шага или смахнули — листается,
+  // иначе пружинит назад; на краю списка — тянется туго. Подсказка «свайп»: при первом открытии карточка сама
+  // отъезжает и показывает следующую (localStorage, один раз; кнопка вариантов на ПК показывает её снова).
+  const aptCard = popup.querySelector('.apt-card');
+  let aptFrom = 'list', pickFrom = null;   // список, из которого открыта квартира ('list' | 'fav')
+  const aptCarousel = (() => {
+    const STEP = 342 + 16, HINT_KEY = 'vesper.swipeHint';
+    const sides = [-1, 1].map(off => {
+      const el = aptCard.cloneNode(true);
+      el.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
+      el.querySelectorAll('img').forEach(img => img.onerror = () => img.removeAttribute('src'));
+      el.classList.add('side');
+      el.setAttribute('aria-hidden', 'true');
+      el.style.transformOrigin = off < 0 ? 'right center' : 'left center';   // уменьшается к краю экрана — край виден весь
+      popup.insertBefore(el, aptCard);
+      return { el, off, id: null };
+    });
+    const count = aptCard.querySelector('.count');
+    const close = document.getElementById('aptClose');
+    const arrows = { [-1]: document.getElementById('aptPrev'), 1: document.getElementById('aptNext') };
+    let sx = 0, anim = null;
+    const on = () => !screen.classList.contains('wide') && screen.dataset.popup !== 'old';
+    const list = () => aptFrom === 'fav' ? Object.keys(aptData).filter(id => favs.has(id)) : filtered;
+    const neighbor = dir => sides.find(s => s.off === dir).id;
+    function layout() {
+      const card = (el, off) => {
+        const d = Math.min(1, Math.abs(off * STEP + sx) / STEP);
+        el.style.transform = sx || off ? `translateX(${off * STEP + sx}px) scale(${1 - 0.06 * d})` : '';
+        el.style.opacity = sx || off ? 1 - 0.3 * d : '';
+      };
+      card(aptCard, 0);
+      sides.forEach(s => card(s.el, s.off));
+      close.style.opacity = sx ? Math.max(0, 1 - Math.abs(sx) / 80) : '';
+      popup.classList.toggle('moving', !!sx);
+    }
+    // Сдвиг до to за ms (ease-out), потом done().
+    function animate(to, ms, done) {
+      const from = sx, t0 = performance.now();
+      const a = anim = { done };
+      (function tick(t) {
+        if (anim !== a) return;
+        const k = Math.min(1, (t - t0) / ms);
+        sx = from + (to - from) * (1 - (1 - k) ** 3);
+        layout();
+        if (k < 1) requestAnimationFrame(tick);
+        else { anim = null; done?.(); }
+      })(t0);
+    }
+    function finishAnim() { const a = anim; anim = null; a?.done?.(); }   // палец или стрелка — недоигранное сразу к концу
+    function go(dir) {
+      const id = neighbor(dir);
+      if (!id) return;
+      sx = 0; layout();
+      pickFrom = aptFrom;
+      screen.dispatchEvent(new CustomEvent('apartmentpick', { detail: { id } }));
+      pickFrom = null;
+    }
+    function step(dir) {
+      finishAnim();
+      if (neighbor(dir)) animate(-dir * STEP, 280, () => go(dir));
+    }
+    function update(opened) {
+      if (!aptShown) return;
+      const ids = list(), i = ids.indexOf(aptShown);
+      for (const s of sides) {
+        s.id = i < 0 ? null : ids[i + s.off] || null;
+        s.el.classList.toggle('none', !s.id);
+        if (s.id) fillCard(s.el, s.id);
+      }
+      count.textContent = i < 0 ? '' : `${i + 1} / ${ids.length}`;
+      for (const dir of [-1, 1]) arrows[dir].classList.toggle('none', !neighbor(dir));
+      if (!anim) { sx = 0; layout(); }
+      if (opened) hint();
+    }
+    function hint(force) {
+      if (!on() || screen.dataset.popup !== 'swipe' || !neighbor(1)) return;
+      try { if (!force && localStorage.getItem(HINT_KEY)) return; localStorage.setItem(HINT_KEY, '1'); } catch {}
+      setTimeout(() => {
+        if (anim || sx || !aptShown) return;
+        animate(-72, 420, () => setTimeout(() => { if (!anim && !drag) animate(0, 500); }, 250));
+      }, 700);
+    }
+    screen.addEventListener('popupvariant', () => { finishAnim(); sx = 0; layout(); if (aptShown) hint(true); });
+    arrows[-1].onclick = () => step(-1);
+    arrows[1].onclick = () => step(1);
+    // Свайп: горизонтальное движение больше 8 px — карточка поехала, кнопки внутри не нажимаются.
+    let drag = null, dragged = false;
+    aptCard.addEventListener('pointerdown', e => {
+      if (!on() || drag) return;
+      finishAnim();
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, live: false, k: screen.getBoundingClientRect().width / screen.offsetWidth,
+               hist: [{ x: e.clientX, t: e.timeStamp }] };
+      dragged = false;
+    });
+    aptCard.addEventListener('pointermove', e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = (e.clientX - drag.x) / drag.k, dy = (e.clientY - drag.y) / drag.k;
+      if (!drag.live) {
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+        drag.live = dragged = true;
+        drag.x = e.clientX;   // без скачка на порог
+        aptCard.setPointerCapture(e.pointerId);
+        return;
+      }
+      drag.hist.push({ x: e.clientX, t: e.timeStamp });
+      if (drag.hist.length > 5) drag.hist.shift();
+      sx = neighbor(dx < 0 ? 1 : -1) ? dx : dx * 0.3;
+      layout();
+    });
+    const up = e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const h = drag.hist, v = h.length > 1 ? (h[h.length - 1].x - h[0].x) / drag.k / Math.max(1, h[h.length - 1].t - h[0].t) : 0;
+      const live = drag.live;
+      drag = null;
+      if (!live) return;
+      const dir = sx < 0 ? 1 : -1;
+      if (neighbor(dir) && e.type === 'pointerup' && (Math.abs(sx) > STEP * 0.3 || Math.abs(v) > 0.4 && Math.sign(v) === -dir))
+        animate(-dir * STEP, 220, () => go(dir));
+      else animate(0, 260);
+    };
+    aptCard.addEventListener('dragstart', e => e.preventDefault());
+    aptCard.addEventListener('pointerup', up);
+    aptCard.addEventListener('pointercancel', up);
+    aptCard.addEventListener('click', e => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
+    return { update };
+  })();
 
   // --- Панель квартир слева (ПК): фильтры, список отфильтрованных, избранное ---
   // Фильтры как в приложении UE: корпус (A = 1, Б = 2 — первая цифра id), комнаты, диапазоны этажа, площади и цены
@@ -1968,12 +2139,15 @@
     document.getElementById('apFavCount').textContent = favIds.length;
     document.getElementById('apList').innerHTML = listRows(filtered, 'Нет квартир по фильтрам');
     document.getElementById('apFav').innerHTML = listRows(favIds, 'В избранном пока пусто');
+    aptCarousel.update();   // список изменился — соседи и счётчик карточки
   }
   // Строка списка — выбрать квартиру (overlay.js: подсветка и 'apartmentselect').
   for (const id of ['apList', 'apFav']) document.getElementById(id).addEventListener('click', e => {
     const b = e.target.closest('button[data-id]');
     if (!b) return;
+    pickFrom = id === 'apFav' ? 'fav' : 'list';   // карточка листается по этому списку
     screen.dispatchEvent(new CustomEvent('apartmentpick', { detail: { id: b.dataset.id } }));
+    pickFrom = null;
     screen.classList.remove('ap-shown');   // телефон: окно закрывается, видна карточка квартиры
   });
   // Телефон: кнопка фильтра в шапке открывает/закрывает окно, «Применить» закрывает (фильтр применяется сразу).
