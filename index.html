@@ -691,6 +691,19 @@
   .start { position: absolute; inset: 0; background: #000; overflow: hidden; transition: opacity .35s, visibility .35s; }
   .start.hidden { opacity: 0; visibility: hidden; }
   .start > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  /* Полоса предзагрузки (решение 2026-10-28) — над кнопками, их не сдвигает; загрузилось — тает, «Начать» оживает. */
+  .start .preload {
+    position: absolute; left: 0; right: 0; bottom: calc(100% + 16px); transition: opacity .35s;
+    font: 500 12px Inter, system-ui, sans-serif; color: #fff; text-align: center; text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+  }
+  .start .preload i { display: block; height: 3px; margin-top: 8px; border-radius: 2px; background: rgba(255, 255, 255, .3); overflow: hidden; }
+  .start .preload i::after {
+    content: ""; display: block; height: 100%; background: #fff;
+    transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform .2s linear;
+  }
+  .start .preload.done { opacity: 0; }
+  .start .menu-cta .call { transition: opacity .35s; }
+  .start .menu-cta .call.wait { opacity: .45; cursor: default; }
 
   /* О проекте (фрейм 925:7627): зелёный экран на весь экран, заголовок, вкладки, статья, крестик внизу. */
   .about {
@@ -905,7 +918,8 @@
       <div class="glass lang">рус</div>
     </div>
     <div class="menu-cta">
-      <a href="#" class="call" id="startGo">Начать</a>
+      <div class="preload" id="preload"><span>Загрузка 0 %</span><i></i></div>
+      <a href="#" class="call wait" id="startGo">Начать</a>
       <a href="#" class="pick off" aria-disabled="true">Выбрать квартиру</a>
     </div>
   </div>
@@ -1020,6 +1034,76 @@
   // lift — доля высоты основного кадра 4:3. Снизу открывается запас квадратного рендера (1/6 основного кадра);
   // если lift больше, чем позволяет запас, — под кадром рисуется отражение (см. draw()).
   const qs = new URLSearchParams(location.search);
+  // --- Предзагрузка (решение 2026-10-28): на стартовом экране — полоса загрузки, «Начать» — когда загружено обязательное:
+  // облегчённые кадры облёта и маски (все), полный кадр 354° (стартовый), дом и подсветки (GLB), камера облёта, шрифты
+  // Cera Pro, видео пролётов на лобби и в сад (сад — тот, что откроется на этой форме экрана). Остальное — как раньше, фоном.
+  // Файлы из списка (preload.add) загрузчики берут через preload.fetch — их байты идут в полосу. Размер до ответа
+  // сервера — оценка, потом Content-Length. Не нашёлся / ошибка — файл выпадает из счёта (полоса не зависает).
+  const preload = (() => {
+    const items = new Map();   // адрес -> { est, got, done }
+    const subs = [];
+    let shown = 0, queued = false;
+    function report() {
+      queued = false;
+      let est = 0, got = 0, left = 0;
+      for (const it of items.values()) {
+        est += it.est; got += it.done ? it.est : Math.min(it.got, it.est);
+        if (!it.done) left++;
+      }
+      shown = left ? Math.max(shown, est ? got / est : 0) : 1;   // полоса не идёт назад, когда оценка сменилась размером
+      for (const f of subs) f(shown, !left);
+      if (!left && busy) { busy = false; for (const f of after.splice(0)) f(); }
+    }
+    let busy = true;
+    const after = [];   // whenDone: остальная загрузка (полные кадры облёта, другие видео) ждёт — канал весь предзагрузке
+    let last = performance.now();
+    const tick = () => { last = performance.now(); if (!queued) { queued = true; requestAnimationFrame(report); } };
+    function finish(it, ok) { it.done = true; if (!ok) it.est = 0; else it.est = Math.max(it.got, 1); tick(); }
+    // Страховка: PRELOAD_STALL_MS ни байта (не загрузился three.js с CDN, сервер не отвечает) — оставшееся из счёта
+    // выпадает, «Начать» оживает.
+    const PRELOAD_STALL_MS = 20000;
+    const stall = setInterval(() => {
+      if (performance.now() - last < PRELOAD_STALL_MS) return;
+      clearInterval(stall);
+      const left = [...items].filter(([, it]) => !it.done);
+      if (left.length) console.warn('preload: нет ответа —', left.map(([u]) => u));
+      for (const [, it] of left) finish(it, false);
+    }, 1000);
+    return {
+      add(url, est) { if (!items.has(url)) { items.set(url, { est, got: 0, done: false }); tick(); } },
+      done(url, ok = true) { const it = items.get(url); if (it && !it.done) finish(it, ok); },
+      has: url => items.has(url),
+      get busy() { return busy; },
+      whenDone(f) { if (busy) after.push(f); else f(); },
+      skip(prefix) { for (const [u, it] of items) if (!it.done && u.startsWith(prefix)) finish(it, false); },
+      onProgress(f) { subs.push(f); tick(); },
+      async fetch(url, opts) {
+        const it = items.get(url);
+        if (!it || it.done) return fetch(url, opts);
+        let r;
+        try {
+          r = await fetch(url, opts);
+          if (!r.ok || !r.body) {
+            const b = r.ok && await r.blob();
+            if (b) it.got = b.size;
+            finish(it, r.ok);
+            return b ? new Response(b) : r;
+          }
+          const n = +r.headers.get('content-length');
+          if (n && !r.headers.get('content-encoding')) it.est = n;   // сжатый ответ — длина не в байтах тела
+          const reader = r.body.getReader(), chunks = [];
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value); it.got += value.length; tick();
+          }
+          finish(it, true);
+          return new Response(new Blob(chunks, { type: r.headers.get('content-type') || '' }));
+        } catch (e) { finish(it, false); throw e; }
+      },
+    };
+  })();
+  window.preload = preload;   // overlay.js — GLB дома и подсветок, камера облёта
   // lift по умолчанию (нет ?lift) — свой у каждой квартиры: она встаёт посередине между логотипом и карточкой (aptLift).
   const APT_VIEW = { zoom: +qs.get('zoom') || 1.2, lift: qs.has('lift') ? +qs.get('lift') : null };   // до 2026-10-27: 1.3 / 0.2
   // Подъём не больше APT_LIFT_MAX (?liftmax=): у нижних этажей середина требовала до 0.31 — дом уезжал под шапку.
@@ -1171,8 +1255,8 @@
   // Приоритет пересчитывается при повороте. Одновременно грузится LOAD_PARALLEL кадров.
   // Загруженный кадр — сжатый WebP в памяти (Blob, ~1.3 МБ). Телефон держит не больше KEEP.phone кадров: дальние от
   // текущего угла выгружаются и при повороте грузятся снова (из кэша браузера). ?keep=N — свой предел.
-  // Рядом с кадром — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
-  // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё.
+  // У кадра — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
+  // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё. Маски грузятся отдельно, все (pumpMasks).
   const LOAD_PARALLEL = 4;
   const KEEP = { phone: 36, desktop: Infinity };
   const NEAR_DEG = 10;        // «рядом с текущим углом» — грузится первым
@@ -1193,6 +1277,9 @@
   const MOTION_PX = { phone: 720, desktop: 1280 };   // ?motionpx=N
   const MOTION_ON = qs.get('motion') !== '0';
   const MOTION_PARALLEL = 6;
+  // Маски — все кадры набора, отдельно от полных кадров (решение 2026-10-28; до этого — вместе с полным кадром, и телефон
+  // держал только KEEP): маленькие (1280 px, MASK_SIZE в tools/compress_renders.py), держатся все. См. pumpMasks.
+  const MASK_PARALLEL = 4;
   const STILL_MS = 150;
   const LITE_CANVAS = qs.get('litecanvas') !== '0';   // ?litecanvas=0 — в движении рисовать в основной холст (сравнение)
   let bmpGen = 0;   // растёт при смене размера холста — распакованные кадры пересоздаются
@@ -1202,7 +1289,8 @@
     return { dir, def,
              frames: new Map(),    // угол облёта, ° -> { blob, w, h } сжатый кадр и его размер
              masks: new Map(),     // угол облёта, ° -> Image маски
-             loading: new Map(),   // угол -> { ctl: AbortController, mask: Image } в загрузке
+             maskLoading: new Set(), maskMissing: new Set(), maskAbsent: false,
+             loading: new Map(),   // угол -> { ctl: AbortController } в загрузке
              missing: new Set(),   // углы, которых нет в наборе
              bitmaps: new Map(),   // угол -> распакованная полоса кадра (см. DECODE_MB и ниже)
              decoding: new Map(),  // угол -> gen, распаковывается
@@ -1316,15 +1404,13 @@
     return level * 1000 + dc;
   }
   function unload(s, i) {
-    const mask = s.masks.get(i);
-    if (mask) { mask.onload = mask.onerror = null; mask.src = ''; }
     dropBitmap(s, i);
     if (s.sharp?.i === i) dropSharp(s);
-    s.frames.delete(i); s.masks.delete(i);
+    s.frames.delete(i);
     refreshAvailable(s);
   }
   function abortLoading(s) {
-    for (const [, l] of s.loading) { l.ctl.abort(); l.mask.onload = l.mask.onerror = null; l.mask.src = ''; }
+    for (const [, l] of s.loading) l.ctl.abort();
     s.loading.clear();
   }
   function pump() {
@@ -1337,12 +1423,16 @@
     for (const i of [...s.frames.keys()]) {   // выгрузка ненужных (текущий кадр не трогаем)
       if (!want.has(i) && i !== shown) unload(s, i);
     }
+    // Идёт предзагрузка на стартовом экране — из полных кадров только её (стартовый), остальные потом (whenDone ниже).
+    const later = START_SHOWN && preload.busy;
     for (const i of want) {
       if (s.loading.size >= LOAD_PARALLEL) break;
+      if (later && !preload.has(s.dir + s.def.file(i / step))) continue;
       if (!s.frames.has(i) && !s.loading.has(i)) load(s, i);
     }
     pumpDecode(s);
     pumpMotion(s);
+    pumpMasks(s);
     if (!s.loading.size && !s.available.length && s.missing.size === n) showHint(
       location.protocol === 'file:'
         ? 'Кадры не грузятся с file:// — запустите serve.cmd и откройте http://localhost:8080'
@@ -1369,14 +1459,50 @@
   function loadMotion(s, i) {
     const m = s.motion;
     m.loading.add(i);
-    fetch(s.dir + 'motion/' + s.def.file(i / s.def.stepDeg))
+    preload.fetch(s.dir + 'motion/' + s.def.file(i / s.def.stepDeg))
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
       .then(async blob => { const [w, h] = await frameSize(blob); m.frames.set(i, { blob, w, h }); })
       .catch(() => {
         m.missing.add(i);
-        if (!m.frames.size && m.missing.size >= Math.min(MOTION_PARALLEL, s.def.count)) m.absent = true;
+        if (!m.frames.size && m.missing.size >= Math.min(MOTION_PARALLEL, s.def.count)) {
+          m.absent = true;
+          preload.skip(s.dir + 'motion/');
+        }
       })
       .finally(() => { m.loading.delete(i); if (s === cur) pump(); });
+  }
+  // Маски: все, от ближних к текущему углу. Первые MASK_PARALLEL не нашлись — у набора масок нет.
+  function pumpMasks(s) {
+    if (s.maskAbsent) return;
+    const order = [];
+    for (let k = 0; k < s.def.count; k++) {
+      const i = k * s.def.stepDeg;
+      if (!s.masks.has(i) && !s.maskLoading.has(i) && !s.maskMissing.has(i)) order.push(i);
+    }
+    order.sort((a, b) => priority(a) % 1000 - priority(b) % 1000);
+    for (const i of order) {
+      if (s.maskLoading.size >= MASK_PARALLEL) break;
+      loadMask(s, i);
+    }
+  }
+  function loadMask(s, i) {
+    s.maskLoading.add(i);
+    preload.fetch(s.dir + 'mask/' + s.def.file(i / s.def.stepDeg))
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+      .then(blob => new Promise((ok, err) => {
+        const img = new Image();
+        img.onload = () => ok(img); img.onerror = err;
+        img.src = URL.createObjectURL(blob);
+      }))
+      .then(img => { s.masks.set(i, img); if (s === cur && i === shown) draw(); })
+      .catch(() => {
+        s.maskMissing.add(i);
+        if (!s.masks.size && s.maskMissing.size >= Math.min(MASK_PARALLEL, s.def.count)) {
+          s.maskAbsent = true;
+          preload.skip(s.dir + 'mask/');
+        }
+      })
+      .finally(() => { s.maskLoading.delete(i); if (s === cur) pump(); });
   }
   // Распаковывается видимая на общем виде часть кадра (как bitmapRect, и по высоте тоже): приближение и подъём
   // выбранной квартиры её не покрывают — тогда draw() берёт полный кадр.
@@ -1408,10 +1534,10 @@
   }
   function load(s, i) {
     const file = s.def.file(i / s.def.stepDeg);
-    const l = { ctl: new AbortController(), mask: new Image() }, mask = l.mask;
+    const l = { ctl: new AbortController() };
     s.loading.set(i, l);
     const mine = () => s.loading.get(i) === l;
-    fetch(s.dir + file, { signal: l.ctl.signal })
+    preload.fetch(s.dir + file, { signal: l.ctl.signal })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
       .then(async blob => {
         const [w, h] = await frameSize(blob);
@@ -1422,15 +1548,9 @@
       })
       .catch(e => {
         if (e.name === 'AbortError' || !mine()) return;
-        s.loading.delete(i); s.missing.add(i); mask.src = '';
+        s.loading.delete(i); s.missing.add(i);
         if (s === cur) pump();
       });
-    mask.onload = () => {
-      if (!s.frames.has(i) && !mine()) return;
-      s.masks.set(i, mask);
-      if (s === cur && i === shown) draw();
-    };
-    mask.src = s.dir + 'mask/' + file;
   }
 
   // --- Отрисовка: ближайший доступный кадр к текущему углу, обрезка основного кадра 4:3 по центру (cover) ---
@@ -1445,7 +1565,24 @@
   const START_ANGLE = 177 * 2;
   let angle = +qs.get('angle') || (START_SHOWN ? START_ANGLE : 0);   // угол облёта от кадра 0, ° (?angle=90)
   let shown = -1, pumpedAt = 0;
+  // Список предзагрузки (см. «Предзагрузка» вверху), кроме видео пролётов — их набор известен после fit() (в конце).
+  // Оценки размеров — по текущим файлам; придёт ответ сервера — заменятся настоящими.
+  for (let k = 0; k < cur.def.count; k++) {
+    if (MOTION_ON) preload.add(cur.dir + 'motion/' + cur.def.file(k), 190e3);
+    preload.add(cur.dir + 'mask/' + cur.def.file(k), 17e3);
+  }
+  preload.add(cur.dir + cur.def.file(Math.round(START_ANGLE / cur.def.stepDeg) % cur.def.count), 1.2e6);
+  preload.add('data/orbit_main/camera.json', 41e3);
+  // GLB — те, что грузит overlay.js (OCCLUDER и highlights)
+  for (const [name, est] of [['building_A_shell', 2.2e6], ['building_B_shell', 1.7e6], ['building_AB_shell', 0.24e6], ['highlights', 2e6]]) {
+    preload.add(`data/building/${name}.glb`, est);
+  }
+  for (const w of [400, 500]) {   // Cera Pro (@font-face вверху) грузится, только когда попросят
+    preload.add('font:' + w, 185e3);
+    document.fonts.load(`${w} 16px "Cera Pro"`).then(() => preload.done('font:' + w), () => preload.done('font:' + w, false));
+  }
   pump();
+  preload.whenDone(pump);   // полные кадры, отложенные на время предзагрузки
   function nearestFrame() {
     const want = (angle % 360 + 360) % 360;
     let best = cur.available[0], bestD = Infinity;
@@ -1859,7 +1996,15 @@
   const hideStart = () => start.classList.add('hidden');
   if (!START_SHOWN) hideStart();
   start.querySelectorAll('a').forEach(a => a.addEventListener('click', e => e.preventDefault()));
-  document.getElementById('startGo').onclick = hideStart;
+  // Полоса предзагрузки над «Начать»; пока не загружено — «Начать» неактивна (меню работает).
+  const startGo = document.getElementById('startGo'), preloadBar = document.getElementById('preload');
+  preload.onProgress((p, done) => {
+    preloadBar.style.setProperty('--p', p);
+    preloadBar.querySelector('span').textContent = `Загрузка ${Math.floor(p * 100)} %`;
+    preloadBar.classList.toggle('done', done);
+    startGo.classList.toggle('wait', !done);
+  });
+  startGo.onclick = () => { if (!startGo.classList.contains('wait')) hideStart(); };
   document.getElementById('startBurger').onclick = () => menu.classList.add('open');
   for (const id of ['menuMap', 'menuOverview', 'menuFloors', 'menuGarden']) document.getElementById(id).addEventListener('click', hideStart);
   menu.querySelector('.pick').addEventListener('click', hideStart);
@@ -2531,7 +2676,7 @@
       GZOOM.rev.src = `renders/Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom_rev.mp4`;
     };
     GZOOM.fwd.onerror = () => { if (++GZOOM.set < GZOOM.sets.length) src(); else GZOOM.ok = false; };
-    src();
+    START_SHOWN ? preload.whenDone(src) : src();   // после предзагрузки — канал ей
   }
   // Раскладка 16:9-кадра {s, x, y}: s — px дизайна на px кадра 3840, x/y — левый верхний угол. Видео — на её место.
   function placeZoom(v, l) {
@@ -2876,6 +3021,7 @@
            open: () => setMap(true), close: () => setMap(false) },
   };
   let flying = false;
+  const afterPreload = f => START_SHOWN ? preload.whenDone(f) : f();
   for (const f of Object.values(FLIGHTS)) {
     f.set = 0; f.ok = true;
     fetch(`data/flight/${f.json || f.name}.json`).then(r => r.json())
@@ -2889,8 +3035,9 @@
       if (++f.set < f.sets.length) src();
       else { f.ok = false; console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`); }
     };
-    if (f === FLIGHTS.map) mapPicked = pickMapSet(f).then(src);   // набор видео — тот, у которого есть картинка конца
-    else src();
+    f.src = () => afterPreload(src);   // видео preload="auto" — браузер сразу качает; ждут предзагрузку
+    if (f === FLIGHTS.map) mapPicked = pickMapSet(f).then(f.src);   // набор видео — тот, у которого есть картинка конца
+    else if (f !== FLIGHTS.lobby && f !== FLIGHTS.garden && f !== FLIGHTS.gardenMobile) f.src();   // лобби и сад — preloadFlight
     f.fwd.master = f.rev.master = f.master || FLIGHT_MASTER;   // по нему placeVideo
   }
   async function pickMapSet(f) {
@@ -3030,6 +3177,27 @@
   addEventListener('resize', refit);
   if (window.visualViewport) visualViewport.addEventListener('resize', refit);
   fit();
+  // Предзагрузка (см. вверху): видео пролётов на лобби и в сад — то, что откроется на этой форме экрана (gardenFlight,
+  // нужен fit()), — целиком в память (Blob); видео играет из него без догрузки. Набор — первый, что нашёлся (f.sets).
+  // Обратные видео и второй сад — как раньше, по адресу (preload="auto").
+  async function preloadFlight(f) {
+    for (; f.set < f.sets.length; f.set++) {
+      const url = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}.mp4`;
+      preload.add(url, 13e6);
+      const r = await preload.fetch(url).catch(() => null);
+      if (!r?.ok) continue;
+      f.fwd.src = URL.createObjectURL(await r.blob());
+      const rev = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}_rev.mp4`;
+      afterPreload(() => { f.rev.src = rev; });
+      return;
+    }
+    f.ok = false;
+    console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`);
+  }
+  {
+    const garden = gardenFlight();
+    for (const f of [FLIGHTS.lobby, FLIGHTS.garden, FLIGHTS.gardenMobile]) f === FLIGHTS.lobby || f === garden ? preloadFlight(f) : f.src();
+  }
   // Android: полноэкранный режим по первому касанию (iPhone так не умеет — там «На экран Домой»).
   if (PHONE && document.documentElement.requestFullscreen && matchMedia('(display-mode: browser)').matches) {
     addEventListener('pointerup', () => {

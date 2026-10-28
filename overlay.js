@@ -379,14 +379,17 @@ pano.addEventListener('pointerup', e => {
 });
 
 const loader = new GLTFLoader();
-const load = name => loader.loadAsync(DATA + 'building/' + name + '.glb');
+// Через window.preload.fetch (index.html, «Предзагрузка»): байты идут в полосу загрузки стартового экрана.
+const load = name => window.preload.fetch(DATA + 'building/' + name + '.glb')
+  .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} ${name}.glb`); return r.arrayBuffer(); })
+  .then(buf => loader.parseAsync(buf, DATA + 'building/'));
 // Фид CRM застройщика (crm.js): зелёные подсветки только у активных квартир, остальные — серые «недоступные».
 // Фида нет — все 64 активные (null). ?all=1 — тоже все, для проверки.
 const ACTIVE_STATUSES = ['AVAILABLE'];
 const loadFeed = () => params.has('all') ? Promise.resolve(null) : window.aptFeed.catch(() => null);
 
 (async () => {
-  cam = await (await fetch(DATA + 'orbit_main/camera.json')).json();
+  cam = await (await window.preload.fetch(DATA + 'orbit_main/camera.json')).json();
 
   for (const g of await Promise.all(OCCLUDER.map(load))) {
     g.scene.traverse(o => {
