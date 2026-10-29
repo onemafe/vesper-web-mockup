@@ -1,0 +1,394 @@
+{
+ "version": 1,
+ "coordinateSystem": "UE: X forward, Y right, Z up, left-handed, centimeters",
+ "note": "иконки мест карты (BP_EnvironmentItem, environment.json) и метка ЖК (BP_AksakovItem) — мировые точки актёров в Play; виджеты приложения в экранном пространстве, центр в точке",
+ "places": [
+  {
+   "index": 0,
+   "category": "green",
+   "name": {
+    "ru": "Новодевичий монастырь",
+    "en": "Novodevichy Convent"
+   },
+   "location": [
+    -36708.2,
+    31878.6,
+    20000.0
+   ]
+  },
+  {
+   "index": 1,
+   "category": "green",
+   "name": {
+    "ru": "Сквер Девичьего поля",
+    "en": "Devyche Pole Square"
+   },
+   "location": [
+    107459.9,
+    -81974.1,
+    20000.0
+   ]
+  },
+  {
+   "index": 2,
+   "category": "green",
+   "name": {
+    "ru": "Саввинская набережная",
+    "en": "Savvinskaya Embankment"
+   },
+   "location": [
+    17836.1,
+    -57643.4,
+    20000.0
+   ]
+  },
+  {
+   "index": 3,
+   "category": "green",
+   "name": {
+    "ru": "Сквер 40-летия Октября",
+    "en": "40th Anniversary of October Square"
+   },
+   "location": [
+    -15402.2,
+    18595.8,
+    20000.0
+   ]
+  },
+  {
+   "index": 4,
+   "category": "green",
+   "name": {
+    "ru": "Парк трубецких",
+    "en": "Trubetskoy Park"
+   },
+   "location": [
+    98684.1,
+    7547.8,
+    20000.0
+   ]
+  },
+  {
+   "index": 5,
+   "category": "green",
+   "name": {
+    "ru": "Лужнецкая набережная",
+    "en": "Luzhnetskaya Embankment"
+   },
+   "location": [
+    -27310.6,
+    195489.1,
+    20000.0
+   ]
+  },
+  {
+   "index": 6,
+   "category": "culture",
+   "name": {
+    "ru": "Музей Льва Толстого",
+    "en": "Leo Tolstoy Museum"
+   },
+   "location": [
+    153228.4,
+    -56547.0,
+    20000.0
+   ]
+  },
+  {
+   "index": 7,
+   "category": "culture",
+   "name": {
+    "ru": "Дом-музей Погодина",
+    "en": "Pogodin House Museum"
+   },
+   "location": [
+    36631.3,
+    -35547.5,
+    20000.0
+   ]
+  },
+  {
+   "index": 8,
+   "category": "culture",
+   "name": {
+    "ru": "Музей–усадьба Новодевичий монастырь",
+    "en": "Novodevichy Convent Museum-Estate"
+   },
+   "location": [
+    -10380.6,
+    14210.3,
+    20000.0
+   ]
+  },
+  {
+   "index": 9,
+   "category": "wellness",
+   "name": {
+    "ru": "Uform",
+    "en": "Uform"
+   },
+   "location": [
+    54804.8,
+    35209.8,
+    20000.0
+   ]
+  },
+  {
+   "index": 10,
+   "category": "wellness",
+   "name": {
+    "ru": "Sculpt",
+    "en": "Sculpt"
+   },
+   "location": [
+    57937.3,
+    21927.0,
+    20000.0
+   ]
+  },
+  {
+   "index": 11,
+   "category": "wellness",
+   "name": {
+    "ru": "The Face Only",
+    "en": "The Face Only"
+   },
+   "location": [
+    67358.8,
+    24161.9,
+    20000.0
+   ]
+  },
+  {
+   "index": 12,
+   "category": "wellness",
+   "name": {
+    "ru": "Аквакомплекс Лужники",
+    "en": "Luzhniki Aquatic Complex"
+   },
+   "location": [
+    -18534.7,
+    177778.7,
+    20000.0
+   ]
+  },
+  {
+   "index": 13,
+   "category": "wellness",
+   "name": {
+    "ru": "Дворец Тенниса",
+    "en": "Tennis Palace"
+   },
+   "location": [
+    -96250.1,
+    46257.8,
+    20000.0
+   ]
+  },
+  {
+   "index": 14,
+   "category": "wellness",
+   "name": {
+    "ru": "World class",
+    "en": "World Class"
+   },
+   "location": [
+    15325.3,
+    51781.7,
+    20000.0
+   ]
+  },
+  {
+   "index": 15,
+   "category": "wellness",
+   "name": {
+    "ru": "Усачевские бани",
+    "en": "Usachevsky Baths"
+   },
+   "location": [
+    61715.4,
+    4258.8,
+    20000.0
+   ]
+  },
+  {
+   "index": 16,
+   "category": "restaurant",
+   "name": {
+    "ru": "Oltremare",
+    "en": "Oltremare"
+   },
+   "location": [
+    36009.6,
+    -68691.3,
+    20000.0
+   ]
+  },
+  {
+   "index": 17,
+   "category": "restaurant",
+   "name": {
+    "ru": "Junju",
+    "en": "Junju"
+   },
+   "location": [
+    54804.8,
+    37402.6,
+    20000.0
+   ]
+  },
+  {
+   "index": 18,
+   "category": "restaurant",
+   "name": {
+    "ru": "Усачевский рынок",
+    "en": "Usachevsky Market"
+   },
+   "location": [
+    39763.8,
+    17499.4,
+    20000.0
+   ]
+  },
+  {
+   "index": 19,
+   "category": "restaurant",
+   "name": {
+    "ru": "Hands",
+    "en": "Hands"
+   },
+   "location": [
+    73623.8,
+    -68691.3,
+    20000.0
+   ]
+  },
+  {
+   "index": 20,
+   "category": "restaurant",
+   "name": {
+    "ru": "Vadvare",
+    "en": "Vadvare"
+   },
+   "location": [
+    75489.0,
+    34071.3,
+    20000.0
+   ]
+  },
+  {
+   "index": 21,
+   "category": "restaurant",
+   "name": {
+    "ru": "Eva",
+    "en": "Eva"
+   },
+   "location": [
+    87397.4,
+    -112925.2,
+    20000.0
+   ]
+  },
+  {
+   "index": 22,
+   "category": "education",
+   "name": {
+    "ru": "Детский сад Twinkle kids",
+    "en": "Twinkle Kids Kindergarten"
+   },
+   "location": [
+    -88741.6,
+    154586.5,
+    20000.0
+   ]
+  },
+  {
+   "index": 23,
+   "category": "education",
+   "name": {
+    "ru": "Discovery English Preschool",
+    "en": "Discovery English Preschool"
+   },
+   "location": [
+    75489.0,
+    -85305.3,
+    20000.0
+   ]
+  },
+  {
+   "index": 24,
+   "category": "education",
+   "name": {
+    "ru": "Park Kultury Nursery",
+    "en": "Park Kultury Nursery"
+   },
+   "location": [
+    141320.0,
+    -57643.4,
+    20000.0
+   ]
+  },
+  {
+   "index": 25,
+   "category": "education",
+   "name": {
+    "ru": "Brosko School",
+    "en": "Brosko School"
+   },
+   "location": [
+    136298.4,
+    -123973.1,
+    20000.0
+   ]
+  },
+  {
+   "index": 26,
+   "category": "education",
+   "name": {
+    "ru": "Школа № 1535",
+    "en": "School No. 1535"
+   },
+   "location": [
+    21590.4,
+    37402.6,
+    20000.0
+   ]
+  },
+  {
+   "index": 27,
+   "category": "education",
+   "name": {
+    "ru": "Филипповская школа",
+    "en": "Filippov School"
+   },
+   "location": [
+    86775.7,
+    -32216.3,
+    20000.0
+   ]
+  },
+  {
+   "index": 28,
+   "category": "education",
+   "name": {
+    "ru": "Сеченовский университет",
+    "en": "Sechenov University"
+   },
+   "location": [
+    34742.2,
+    -11216.8,
+    20000.0
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "text": "ПОГОДИНСКАЯ",
+   "location": [
+    -6556.9,
+    -298.5,
+    20000.0
+   ]
+  }
+ ]
+}

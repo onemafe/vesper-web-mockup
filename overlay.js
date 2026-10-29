@@ -377,6 +377,18 @@ pano.addEventListener('pointerup', e => {
   const id = pick(e.clientX, e.clientY);
   select(id === selected ? null : id);   // повторный тап или тап мимо — снять выбор
 });
+// ПК: курсор обычный, над квартирой — «пальчик». Луч не чаще кадра; при перетаскивании не проверяем.
+let hoverAt = null;
+pano.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  if (hoverAt) { hoverAt = e; return; }
+  hoverAt = e;
+  requestAnimationFrame(() => {
+    const p = hoverAt; hoverAt = null;
+    pano.style.cursor = visible && cam && !p.buttons && pick(p.clientX, p.clientY) ? 'pointer' : '';
+  });
+});
+pano.addEventListener('pointerleave', () => { pano.style.cursor = ''; });
 
 const loader = new GLTFLoader();
 // Через window.preload.fetch (index.html, «Предзагрузка»): байты идут в полосу загрузки стартового экрана.
