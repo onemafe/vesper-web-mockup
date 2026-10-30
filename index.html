@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Погодинская — облёт</title>
+<script>
+  // Было / стало по свету (решение 2026-10-29): renders/ — новый свет (Dropbox 2026_Renders), renders_old/ — замороженная
+  // копия до смены цвета и света (Dropbox 2026_Renders_Old). ?light=old — старый. Все пути к рендерам — от RENDERS.
+  // Старый свет — только основной облёт 9:00 (RENDERS_ORBIT, решение 2026-10-30: на Pages из renders_old публикуется
+  // лишь 360_Test/HQ); 17:00, 23:00, пролёты, панорамы и всё остальное всегда новые.
+  var LIGHT_OLD = new URLSearchParams(location.search).get('light') === 'old';
+  var RENDERS = 'renders/';
+  var RENDERS_ORBIT = LIGHT_OLD ? 'renders_old/' : 'renders/';
+</script>
 <!-- Телефон: «На экран Домой» открывает макет без панелей браузера (iPhone — только так; Android — ещё и полноэкранный режим по первому касанию). -->
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
@@ -176,9 +185,11 @@
   #screen.map-on .place, #screen.map-on .hint, #screen.map-flight .place, #screen.map-flight .hint { visibility: hidden; }
   /* Иконки мест над картой и в пролёте на неё — как BP_EnvironmentItem приложения (WBP_EnvironmentItem): значок категории
      на размытой «таблетке» её цвета (непрозрачность 0.42), центр — в мировой точке на высоте 200 м; нажатие — название.
-     Метка ЖК «ПОГОДИНСКАЯ» — BP_AksakovItem (картинка T_Aksakov). Слой над картой и видео пролёта, под шапкой. */
-  #mapPlaces { position: absolute; inset: 0; overflow: hidden; pointer-events: none; visibility: hidden; }
-  #screen.map-on #mapPlaces, #screen.map-flight #mapPlaces { visibility: visible; }
+     Метка ЖК «ПОГОДИНСКАЯ» — BP_AksakovItem (картинка T_Aksakov). Слой над картой, под шапкой; в пролёте скрыт —
+     проявляется, когда пролёт закончился, и тает в начале обратного. */
+  #mapPlaces { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+               opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s; }
+  #screen.map-on:not(.map-flight) #mapPlaces { opacity: 1; visibility: visible; transition: opacity 0.4s; }
   #mapPlaces > * { position: absolute; left: 0; top: 0; }
   .mplace {
     display: flex; align-items: center; gap: 4px; height: 30px; min-width: 30px; padding: 0 5px; border-radius: 15px;
@@ -708,12 +719,17 @@
   #screen.wide:not([data-nav="burger"]) .start .menu-cta .pick { display: none; }
 
   /* Стартовый экран (фрейм 925:7738) — самое начало, до облёта: статичная картинка, шапка (бургер, логотип, РУС)
-     и кнопки «Начать» (→ облёт) и «Выбрать квартиру» (пока неактивна). Картинка — renders/Static/orbit_177_Loading
-     (Dropbox 2026_Renders/Static): кадр облёта 177 в обработке, 4:3, обрезан по центру (cover) ровно как облёт, — облёт
-     после «Начать» стартует с того же кадра (START_ANGLE). */
+     и кнопки «Начать» (→ облёт) и «Выбрать квартиру» (пока неактивна). Картинка — renders/Static/Intro_Loading
+     (Dropbox 2026_Renders/Static, решение 2026-10-29; было orbit_177_Loading): вечерний кадр Krea, квадратный, как
+     рендер облёта, и стоит так же (placeStart). «Начать» — видео Intro.mp4 (Krea: от картинки к кадру облёта 0) поверх
+     картинки, шапка и кнопки тают; в конце стартовый экран тает в облёт на START_ANGLE = 0. */
   .start { position: absolute; inset: 0; background: #000; overflow: hidden; transition: opacity .35s, visibility .35s; }
   .start.hidden { opacity: 0; visibility: hidden; }
-  .start > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .start > img, .start > video { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; }
+  .start > video { visibility: hidden; }
+  .start.playing > video { visibility: visible; }
+  .start .header, .start .menu-cta { transition: opacity .35s; }
+  .start.playing .header, .start.playing .menu-cta { opacity: 0; pointer-events: none; }
   /* Полоса предзагрузки (решение 2026-10-28) — над кнопками, их не сдвигает; загрузилось — тает, «Начать» оживает. */
   .start .preload {
     position: absolute; left: 0; right: 0; bottom: calc(100% + 16px); transition: opacity .35s;
@@ -782,7 +798,7 @@
     <div id="mapLayer"><img id="mapImg" alt="" draggable="false"></div>   <!-- кадр целиком + плитки 16K (mapTiles) -->
     <div class="loading" id="mapLoading">Загрузка…</div>
   </div>
-  <div id="mapPlaces"></div>   <!-- иконки мест (data/map/places.json): над картой и видео пролёта на неё -->
+  <div id="mapPlaces"></div>   <!-- иконки мест (data/map/places.json): над картой, после пролёта -->
 
   <div class="hint" id="hint"></div>
 
@@ -935,7 +951,8 @@
   </div>
 
   <div class="start" id="start">
-    <img src="renders/Static/orbit_177_Loading.webp" alt="" draggable="false">
+    <img alt="" draggable="false">
+    <video id="introVideo" muted playsinline preload="auto"></video>
     <div class="header">
       <button class="glass" id="startBurger" aria-label="Меню"><img src="assets/icon-burger.svg" alt=""></button>
       <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
@@ -1049,7 +1066,7 @@
   };
   function pad(n) { return String(n).padStart(3, '0'); }
   const SET = new URLSearchParams(location.search).get('set') || 'HQ';   // ?set=LQ — старый тестовый набор
-  const DIR = `renders/360_Test/${SET}/`;
+  const DIR = `${RENDERS_ORBIT}360_Test/${SET}/`;
   const set = SETS[SET] || SETS.HQ;
   const DEG_PER_PX = 0.35;   // сколько градусов облёта на пиксель свайпа (в координатах экрана 430×932)
   // Выбранная квартира (тап по подсветке в режиме «квартиры»): кадр приближается и поднимается вверх по экрану (дом уходит от кнопок).
@@ -1059,7 +1076,7 @@
   // если lift больше, чем позволяет запас, — под кадром рисуется отражение (см. draw()).
   const qs = new URLSearchParams(location.search);
   // --- Предзагрузка (решение 2026-10-28): на стартовом экране — полоса загрузки, «Начать» — когда загружено обязательное:
-  // облегчённые кадры облёта и маски (все), полный кадр 354° (стартовый), дом и подсветки (GLB), камера облёта, шрифты
+  // облегчённые кадры облёта и маски (все), полный кадр 0° (стартовый), дом и подсветки (GLB), камера облёта, шрифты
   // Cera Pro, видео пролётов на лобби и в сад (сад — тот, что откроется на этой форме экрана). Остальное — как раньше, фоном.
   // Файлы из списка (preload.add) загрузчики берут через preload.fetch — их байты идут в полосу. Размер до ответа
   // сервера — оценка, потом Content-Length. Не нашёлся / ошибка — файл выпадает из счёта (полоса не зависает).
@@ -1194,6 +1211,14 @@
         'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
       onclick,
     }));
+    // Свет: новый / старый (RENDERS_ORBIT, ?light=old) — перезагрузка с тем же адресом; облёт открывается на том же угле.
+    const lb = button(() => {
+      const q = new URLSearchParams(location.search);
+      if (!LIGHT_OLD) q.set('light', 'old'); else q.delete('light');
+      if (start.classList.contains('hidden')) q.set('angle', Math.round(((angle % 360) + 360) % 360));
+      location.search = q.toString();
+    });
+    lb.textContent = LIGHT_OLD ? 'Свет: старый' : 'Свет: новый';
     const nb = button(() => { nav = (nav + 1) % NAVS.length; nb.textContent = NAVS[nav].name; screen.dataset.nav = NAVS[nav].id; fit(); });
     const b = button(() => {
       sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name;
@@ -1583,10 +1608,10 @@
   // запас виден, когда кадр сдвигается (выбор квартиры — снизу открывается настоящая картинка вместо отражения).
   // Старые кадры 4:3 тоже работают: у них основной кадр = весь кадр. Docs/FRAMES.html.
   const ORBIT_BASE_ASPECT = 4 / 3;
-  // Стартовый экран показан (см. «Стартовый экран» ниже) — облёт сразу на кадре его картинки (orbit_177), чтобы после
-  // «Начать» картинка не прыгала. Параметры проверки (?map, ?floor, ?apt…) и ?nostart — без стартового экрана.
+  // Стартовый экран показан (см. «Стартовый экран» ниже) — облёт сразу на кадре, которым кончается видео «Начать»
+  // (orbit_000), чтобы на стыке картинка не прыгала. Параметры проверки (?map, ?floor, ?apt…) и ?nostart — без стартового экрана.
   const START_SHOWN = !['nostart', 'map', 'floor', 'garden', 'gpath', 'apt', 'apts', 'plan3d', 'pano', 'views', 'angle', 'debug'].some(k => qs.has(k));
-  const START_ANGLE = 177 * 2;
+  const START_ANGLE = 0;
   let angle = +qs.get('angle') || (START_SHOWN ? START_ANGLE : 0);   // угол облёта от кадра 0, ° (?angle=90)
   let shown = -1, pumpedAt = 0;
   // Список предзагрузки (см. «Предзагрузка» вверху), кроме видео пролётов — их набор известен после fit() (в конце).
@@ -1778,9 +1803,9 @@
   let hour = 9, hourReq = 0;
   async function hourSet(h) {
     if (!timeSets[h]) {
-      let s = makeSet(`renders/360_Test/${SET === 'LQ' ? 'LQ' : 'HQ'}_${h}/`, SET === 'LQ' ? SETS.LQ : SETS.HQ);
+      let s = makeSet(`${RENDERS}360_Test/${SET === 'LQ' ? 'LQ' : 'HQ'}_${h}/`, SET === 'LQ' ? SETS.LQ : SETS.HQ);
       if (SET !== 'LQ' && !await fetch(s.dir + s.def.file(0), { method: 'HEAD' }).then(r => r.ok, () => false)) {
-        s = makeSet(`renders/360_Test/LQ_${h}/`, SETS.LQ);   // финального набора часа ещё нет — тестовый
+        s = makeSet(`${RENDERS}360_Test/LQ_${h}/`, SETS.LQ);   // финального набора часа ещё нет — тестовый
       }
       timeSets[h] ||= s;
     }
@@ -1821,7 +1846,7 @@
   // в той же обрезке, что кадр облёта (3D-слой — над ним). Ползунок 4:15…23:00, как TimeSlider приложения; без
   // смешивания — показывается ближайший снятый кадр, отпустили — «солнце» встаёт на его час. Свайп облёта, пролёт,
   // карта или кнопка дня/ночи закрывают ползунок — облёт снова в своём часе. ?tslider — сразу открыт (?tslider=23 — на 23:00).
-  const TIME_DIR = 'renders/360_Test/Time_177/';
+  const TIME_DIR = RENDERS + '360_Test/Time_177/';
   const tsBtn = document.querySelector('.dock .light2');
   const tsBar = document.getElementById('timeslider');
   const tsThumb = tsBar.querySelector('.thumb'), tsLabel = tsThumb.querySelector('b');
@@ -2028,7 +2053,44 @@
     preloadBar.classList.toggle('done', done);
     startGo.classList.toggle('wait', !done);
   });
-  startGo.onclick = () => { if (!startGo.classList.contains('wait')) hideStart(); };
+  // «Начать»: видео Intro (первый кадр = картинка стартового экрана, последний ≈ orbit_000) поверх картинки, шапка и
+  // кнопки тают; кончилось — стартовый экран тает (.35 с) в облёт на START_ANGLE. Видео нет — сразу облёт.
+  // Видео — в предзагрузке, целиком в Blob (играет без догрузки).
+  const INTRO = RENDERS + 'Static/Intro.mp4';
+  const intro = document.getElementById('introVideo'), startImg = start.querySelector(':scope > img');
+  let introOk = false;
+  if (START_SHOWN) {
+    preload.add(INTRO, 4e6);
+    preload.fetch(INTRO).then(r => r.ok ? r.blob() : Promise.reject())
+      .then(b => { intro.src = URL.createObjectURL(b); introOk = true; })
+      .catch(() => console.warn('intro: нет видео — «Начать» сразу в облёт'));
+  }
+  function placeStart() {   // квадрат 3840 в масштабе облёта, по центру — как кадр облёта (draw)
+    const s = orbitScale();
+    for (const el of [startImg, intro]) {
+      const w = el.videoWidth || el.naturalWidth || 3840, k = s * 3840 / w;
+      el.style.width = el.style.height = `${w}px`;
+      el.style.transform = `translate(${(W - w * k) / 2}px, ${(H - w * k) / 2}px) scale(${k})`;
+    }
+  }
+  startImg.addEventListener('load', placeStart);
+  startImg.src = RENDERS + 'Static/Intro_Loading.webp';
+  screen.addEventListener('layout', placeStart);   // любой fit(): окно, ПК / Мобайл, меню
+  intro.addEventListener('loadedmetadata', placeStart);
+  startGo.onclick = async () => {
+    if (startGo.classList.contains('wait') || start.classList.contains('playing')) return;
+    if (introOk) {
+      if (intro.readyState < 2) await new Promise(ok => { intro.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
+      intro.currentTime = 0;
+      start.classList.add('playing');
+      try {
+        await intro.play();
+        await new Promise(ok => { intro.addEventListener('ended', ok, { once: true }); intro.addEventListener('pause', ok, { once: true }); });
+      } catch (e) { console.warn('intro:', e); }
+    }
+    hideStart();
+    setTimeout(() => start.classList.remove('playing'), 400);
+  };
   document.getElementById('startBurger').onclick = () => menu.classList.add('open');
   for (const id of ['menuMap', 'menuOverview', 'menuFloors', 'menuGarden']) document.getElementById(id).addEventListener('click', hideStart);
   menu.querySelector('.pick').addEventListener('click', hideStart);
@@ -2478,7 +2540,7 @@
 
   // --- 3D-план квартиры на весь экран (кнопка ПЛАН) ---
   // Рендер renders/Plans_Test/plan_<id>.webp (4K, сжат tools/compress_renders.py, Docs/PLAN3D.md). Макета нет: только крестик — назад к попапу.
-  const PLAN3D_DIR = 'renders/Plans_Test/';
+  const PLAN3D_DIR = RENDERS + 'Plans_Test/';
   const PLAN3D_MAX_ZOOM = 4;   // во сколько раз крупнее начального (cover)
   const plan3d = document.getElementById('plan3d');
   const p3Img = document.getElementById('plan3dImg');
@@ -2513,7 +2575,7 @@
   // (ue/garden_shots.py K, Docs/RENDER.md раздел 6; K заменил G — 2026-10-22, G в camera.json остаётся, но не грузится). Открывают иконка САД и пункт меню «САД»; ?garden — сразу. Кнопки — «360» в точках
   // панорам двора (BP_GardenCamera*), пока их нет — кадр без кнопок. Другая камера, поэтому при переходе двор ↔ этажи
   // вид сбрасывается на весь экран.
-  const FLOORS_DIR = 'renders/Floors_Test/';
+  const FLOORS_DIR = RENDERS + 'Floors_Test/';
   // Этажи — вариант entry (2026-10-26): центр перспективы на входной группе, рамка как у обычных кадров
   // (floor_<id>_entry, data/floors/camera_entry.json, Docs/FLOORS.md «Вариант entry»); ?entry=0 — обычные кадры.
   const ENTRY = qs.get('entry') !== '0';
@@ -2682,7 +2744,10 @@
   // до cover; последний кадр = кадр 30. Обратно — garden_zoom_rev.mp4, в конце K на весь экран. Видео нет — наплыв. ?gzoom=<набор> — свой. Свайп по горизонтали листает кадры 0…60 (как облёт: картинка
   // догоняет палец, всегда чистый кадр). Отдаление (колесо, щипок) или крестик — прокрутка к середине и наплыв в K.
   // Набор Path (4K), если его нет — Path_LQ; ?path=<набор> — свой; ?gpath — сразу открыть отрезок.
-  const PATH_DIR = 'renders/Garden/';
+  // С 2026-10-29 (решение пользователя) приближения после K нет: жест приближения в K ничего не делает, видео B и кадры
+  // отрезка не грузятся. Код оставлен: ?gpath или ?gzoom=<набор> включают прежнее поведение (GARDEN_ZOOM).
+  const GARDEN_ZOOM = qs.has('gpath') || qs.has('gzoom');
+  const PATH_DIR = RENDERS + 'Garden/';
   const PATH_SETS = qs.has('path') ? [qs.get('path')] : ['Path', 'Path_LQ'];
   const PATH_MASTER = { w: 3840, h: 2160 };   // кадр отрезка, px (projection в path.json — в этих пикселях)
   const PATH_PX_PER_FRAME = 8;                // px дизайна свайпа на кадр: весь отрезок (60 кадров) — 480 px
@@ -2692,12 +2757,12 @@
   const gpathFrames = document.getElementById('gpathFrames');
   const gpathPins = document.getElementById('gpathPins');
   const gp = { data: null, set: null, imgs: [], ready: null, pos: 0, target: 0, shown: -1, busy: false };
-  const GZOOM = { sets: qs.has('gzoom') ? [qs.get('gzoom')] : ['GardenZoom', 'GardenZoom_LQ'], set: 0, ok: true,
+  const GZOOM = { sets: qs.has('gzoom') ? [qs.get('gzoom')] : ['GardenZoom', 'GardenZoom_LQ'], set: 0, ok: GARDEN_ZOOM,
                   fwd: document.getElementById('gzoomFwd'), rev: document.getElementById('gzoomRev') };
-  {
+  if (GARDEN_ZOOM) {
     const src = () => {
-      GZOOM.fwd.src = `renders/Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom.mp4`;
-      GZOOM.rev.src = `renders/Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom_rev.mp4`;
+      GZOOM.fwd.src = `${RENDERS}Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom.mp4`;
+      GZOOM.rev.src = `${RENDERS}Flight/${GZOOM.sets[GZOOM.set]}/garden_zoom_rev.mp4`;
     };
     GZOOM.fwd.onerror = () => { if (++GZOOM.set < GZOOM.sets.length) src(); else GZOOM.ok = false; };
     START_SHOWN ? preload.whenDone(src) : src();   // после предзагрузки — канал ей
@@ -2748,6 +2813,7 @@
     return new Promise(ok => { const img = new Image(); img.onload = () => ok(img); img.onerror = () => ok(null); img.src = src; });
   }
   function preparePath() {   // path.json, набор и все кадры: сначала середина, потом от неё в обе стороны по 4
+    if (!GARDEN_ZOOM) return Promise.resolve(false);
     return gp.ready ||= (async () => {
       try { gp.data = await (await fetch('data/garden/path.json', { cache: 'no-cache' })).json(); } catch { return false; }
       const n = gp.data.frames.length, mid = gp.data.path.middleFrame;
@@ -2833,7 +2899,9 @@
     }
   }
   function enterPath(v) {   // true — жест приближения забран (сад и отрезок есть), иначе обычное приближение
-    if (!floors.classList.contains('garden') || !gp.set) return false;
+    if (!floors.classList.contains('garden')) return false;
+    if (!GARDEN_ZOOM) return true;   // сад не приближается и в отрезок не ведёт (решение 2026-10-29)
+    if (!gp.set) return false;
     // Видео B начинается кадром K — с K_mobile (другая камера) в отрезок наплывом.
     if (!gp.busy && !gpathEl.classList.contains('open'))
       openPath(floorCur === GARDEN_SHOT ? { s: v.s * (floorShotWidth() || PATH_MASTER.w) / PATH_MASTER.w, x: v.x, y: v.y } : null);
@@ -2917,7 +2985,7 @@
   // мельче пикселя экрана), Map_LQ — 960×720 одной картинкой. Видео без своей картинки пропускается; нет ни одной — как
   // раньше: видео Map и map_M. Старт — тот же вид, что у map_M (полоса 16:9 на весь экран × MAP_START_ZOOM), на телефоне
   // сверху и снизу — запас 4:3 для панорамы. ?mapend=0 — прежний map_M.
-  const MAP_SRC = 'renders/Floors_Test/map_M.webp';
+  const MAP_SRC = RENDERS + 'Floors_Test/map_M.webp';
   const MAP_END = { Map: 'MapEnd', Map_LQ: 'MapEnd_LQ' }, MAP_END_NAME = 'map_end_075';
   const MAP_START_ZOOM = +qs.get('mapzoom') || 1.25;
   const MAP_MAX_ZOOM = 3;
@@ -2948,7 +3016,7 @@
   const PLACE_COLORS = { culture: '206 155 71', education: '184 108 200', green: '137 215 101',
                          restaurant: '74 235 255', wellness: '49 151 222', empty: '165 166 165' };
   const mapPlaces = document.getElementById('mapPlaces');
-  let placeEls = [], mapFrames = null, mapFps = 30;   // placeEls: { el, p: мировая точка }
+  let placeEls = [], mapFrames = null;   // placeEls: { el, p: мировая точка }
   // Мировая точка → пиксель кадра w×h камеры c (location, rotation, hFovDeg); за камерой — null.
   function camProject(c, w, h, [X, Y, Z]) {
     const p = c.rotation.pitch * Math.PI / 180, y = c.rotation.yaw * Math.PI / 180;
@@ -2969,7 +3037,7 @@
   }
   Promise.all([fetch('data/map/places.json').then(r => r.json()), fetch('data/flight/map.json').then(r => r.json())])
     .then(([d, f]) => {
-      mapFrames = f.frames; mapFps = f.flight.fps || 30;
+      mapFrames = f.frames;
       for (const pl of d.places) {
         const el = document.createElement('button');
         el.className = 'mplace';
@@ -2992,21 +3060,13 @@
       if (mapFull) mapPZ.redraw();
     })
     .catch(e => console.warn('map places:', e));
-  // Видео пролёта на карту: placeVideo зовёт onplace — иконки по кадру видео.
-  for (const [id, rev] of [['mapFwd', false], ['mapRev', true]])
-    document.getElementById(id).onplace = (v, s, dx) => {
-      if (!mapFrames) return;
-      const n = mapFrames.length, i = Math.min(n - 1, Math.round(v.currentTime * mapFps));
-      const m = v.master;
-      placeAt(mapFrames[rev ? n - 1 - i : i], m.w, m.h, (W - m.w * s) / 2 + dx, (H - m.h * s) / 2, s);
-    };
   // Предел приближения: у 16K — до пикселя картинки на пиксель экрана, не меньше MAP_MAX_ZOOM.
   const mapMaxZoom = v => Math.max(MAP_MAX_ZOOM, 1 / (scale * devicePixelRatio * v.cover));
   const mapPZ = panZoom(mapView, v => mapSrc.tiles ? mapMaxZoom(v) : MAP_MAX_ZOOM, v => {
     mapLayer.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`;
     updateMapTiles(v);
-    // в пролёте иконки ведёт видео (onplace), после него — снова карта (flightDone)
-    if (mapFrames && !screen.classList.contains('map-flight')) placeAt(mapFrames[mapFrames.length - 1], v.iw, v.ih, v.x, v.y, v.s);
+    // иконки — по камере последнего кадра пролёта (кадр карты снят ею)
+    if (mapFrames) placeAt(mapFrames[mapFrames.length - 1], v.iw, v.ih, v.x, v.y, v.s);
   });
   function updateMapTiles(v) {
     const t = mapSrc.tiles;
@@ -3082,7 +3142,7 @@
   // Карта (ue/map_flight.py, раздел 7): кнопка карты / «РАЙОН» — облёт к кадру пролёта, map.mp4 (2.5 с, бленд вида
   // приложения, объектив 25 → 75 мм, 9:00 → 18.9), в конце наплывает карта на старте (MAP_START_ZOOM); та же кнопка и
   // «ОБЩИЙ ВИД» — map_rev.mp4. Видео карты — в своём слое под шапкой и доком (#mapFlight). ?mflight=<набор> — свой.
-  const FLIGHT_DIR = 'renders/Flight/';
+  const FLIGHT_DIR = RENDERS + 'Flight/';
   const FLIGHT_MASTER = { w: 3840, h: 2880 }, FLOOR_MASTER = { w: 3840, h: 2160 };   // кадр пролёта и кадр F1 / K, px
   const MOBILE_FLIGHT_MASTER = { w: 2160, h: 3840 };   // кадр вертикального пролёта в сад = K_mobile, px
   const FLIGHT_FADE_MS = 250;   // наплыв экрана этажей (transition .floors)
@@ -3090,27 +3150,24 @@
   const flightVideos = flightLayers.flatMap(l => [...l.querySelectorAll('video')]);
   const FLIGHTS = {
     // entry (кадры этажей с центром на входе): видео LobbyEntry (ue/flight_render.py entry), пока его нет — обычное.
-    // Сначала LQ — конец сдвинут руками (floor_shots.ENTRY.editCm, 2026-10-28); 4K LobbyEntry ещё со старым концом,
-    // после его перерендера вернуть 4K первым. Эксперимент 2026-10-28: LobbyEntryBlend_LQ — склейка «здание целиком» →
-    // «скрыто» по прозрачности (tools/flight_blend.py); ?flight=LobbyEntry_LQ — без склейки.
+    // 4K перерендерен 2026-10-29 (конец floor_shots.ENTRY.editCm, взгляд на лобби) — первым склейка LobbyEntryBlend:
+    // «здание целиком» → «скрыто» по прозрачности (tools/flight_blend.py); ?flight=LobbyEntry — без склейки.
     lobby: { name: 'lobby', json: ENTRY ? 'lobby_entry' : 'lobby', angle: 155 * 2, endDx: lobbyEndDx,
-             sets: qs.has('flight') ? [qs.get('flight')] : ENTRY ? ['LobbyEntryBlend_LQ', 'LobbyEntry_LQ', 'LobbyEntry', 'Lobby', 'Lobby_LQ'] : ['Lobby', 'Lobby_LQ'],
+             sets: qs.has('flight') ? [qs.get('flight')] : ENTRY ? ['LobbyEntryBlend', 'LobbyEntry', 'LobbyEntryBlend_LQ', 'LobbyEntry_LQ', 'Lobby', 'Lobby_LQ'] : ['Lobby', 'Lobby_LQ'],
              fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
-    // Сад: сначала LQ — тест камеры «смотрит на сад» (решение 2026-10-27); 4K Garden / GardenMobile ещё со старым наклоном,
-    // после их перерендера вернуть 4K первым.
-    garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden_LQ', 'Garden'], angle: 25 * 2,
+    // Сад: 4K Garden / GardenMobile перерендерены 2026-10-29 (камера «смотрит на сад», решение 2026-10-27).
+    garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
               fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
     // Вертикальный пролёт в K_mobile (ue/garden_flight.py … mobile, решение 2026-10-26): видео 9:16, первый кадр —
     // середина кадра облёта 4:3 той же высоты, последний — K_mobile. Стартовый кадр облёта свой — orbit_019 (решение
     // 2026-10-28; у garden — 25), из garden_mobile.json: секвенцию собирают здесь (rebuild mobile). ?gmflight=<набор> — свой.
     gardenMobile: { name: 'garden_mobile', master: MOBILE_FLIGHT_MASTER, angle: 19 * 2,
-                    sets: qs.has('gmflight') ? [qs.get('gmflight')] : ['GardenMobile_LQ', 'GardenMobile'],
+                    sets: qs.has('gmflight') ? [qs.get('gmflight')] : ['GardenMobile', 'GardenMobile_LQ'],
                     fwd: document.getElementById('gardenMobileFwd'), rev: document.getElementById('gardenMobileRev'),
                     startScale: () => orbitScale() * FLIGHT_MASTER.h / MOBILE_FLIGHT_MASTER.h,   // высота кадра облёта = высота видео
                     endScale: () => Math.max(W / MOBILE_FLIGHT_MASTER.w, H / MOBILE_FLIGHT_MASTER.h) },   // K_mobile cover
-    // Карта: сначала LQ — тест отдаления «в разах» (LOG_ZOOM, 2026-10-28); 4K Map — ещё старый путь (26.10), после
-    // перерендера вернуть 4K первым.
-    map: { name: 'map', sets: qs.has('mflight') ? [qs.get('mflight')] : ['Map_LQ', 'Map'], angle: 2 * 2,
+    // Карта: 4K Map перерендерен 2026-10-29 (отдаление «в разах», LOG_ZOOM).
+    map: { name: 'map', sets: qs.has('mflight') ? [qs.get('mflight')] : ['Map', 'Map_LQ'], angle: 2 * 2,
            fwd: document.getElementById('mapFwd'), rev: document.getElementById('mapRev'),
            ease: t => t * t * (3 - 2 * t),   // VTBlend_Cubic — бленд вида приложения на камеру карты
            endScale: () => floorScale() * MAP_START_ZOOM, isOpen: () => mapView.classList.contains('open'),
@@ -3152,7 +3209,6 @@
     const w = (v.videoWidth || m.w), h = (v.videoHeight || m.h);
     v.style.width = `${w}px`; v.style.height = `${h}px`;
     v.style.transform = `translate(${(W - w * k) / 2 + dx}px, ${(H - h * k) / 2}px) scale(${k})`;
-    v.onplace?.(v, s, dx);   // видео карты — иконки мест по кадру
   }
   const nextFrame = () => new Promise(requestAnimationFrame);
   window.orbitRotateTo = rotateTo;   // overlay.js: строка списка квартир поворачивает облёт на квартиру
@@ -3206,7 +3262,6 @@
     screen.classList.remove('map-flight');
     for (const x of flightVideos) x.classList.remove('on');
     flying = false;
-    if (mapFull && mapView.classList.contains('open')) mapPZ.redraw();   // иконки мест — по виду карты
   }
   // Пролёт f с общего вида; open() открывает экран в конце (или сразу, если видео нет / уже на экране этажей или сада).
   async function flyTo(f, open) {
