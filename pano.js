@@ -23,7 +23,8 @@ import * as THREE from 'three';
 const DIR = RENDERS + 'Pano_Test/';
 const VIEWS_DIR = RENDERS + 'Views_Test/';
 // Вертикальный угол камеры вьюера, °. ?fov=N — стартовый угол (проверка резкости при приближении).
-const FOV_MIN = 35, FOV_MAX = 100;
+// Отдалять дальше старта нельзя — широкий угол сильно искажает пространство (решение 2026-10-30, было 100).
+const FOV_MIN = 35, FOV_MAX = 80;
 const FOV_START = Math.max(FOV_MIN, Math.min(FOV_MAX, +new URLSearchParams(location.search).get('fov') || 80));
 const PITCH_LIMIT = 85;
 

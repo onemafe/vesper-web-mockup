@@ -655,7 +655,8 @@
   /* Меню на ПК вместо бургера (решение 2026-10-27, два варианта на выбор): кнопка «Меню: …» рядом с «ПК / Мобайл»
      переключает верх / слева / бургер (?nav=top|side|burger). top — пункты меню строкой вверху, под ней размытие,
      к низу сходит на нет; side — столбик круглых кнопок-иконок слева (как в почте), при наведении ширится и показывает
-     подписи, размытие сходит на нет вправо. Пункты нажимают ссылки бургер-меню (#menu) — действия те же. */
+     подписи, размытие сходит на нет вправо. Пункты нажимают ссылки бургер-меню (#menu) — действия те же.
+     Подложка и наведение без зелёного, подложка слабее (решение 2026-10-30: было rgba(16, 44, 35, 0.6)). */
   .pcnav { display: none; position: absolute; z-index: 3; color: #b9d2c2; }   /* над панорамой и «О проекте» */
   #screen.wide[data-nav="top"] .pcnav.top, #screen.wide[data-nav="side"] .pcnav.side { display: flex; }
   #screen.wide:not([data-nav="burger"]) .header [id$="urger"] { visibility: hidden; }
@@ -673,7 +674,7 @@
   .pcnav.top { left: 0; right: 0; top: 0; height: 130px; padding: 16px 24px 0; justify-content: flex-end; align-items: flex-start; pointer-events: none; }
   .pcnav.top > * { pointer-events: auto; }
   .pcnav.top::before {
-    inset: 0; background: linear-gradient(rgba(16, 44, 35, 0.6), rgba(16, 44, 35, 0));
+    inset: 0; background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
     -webkit-mask: linear-gradient(#000 45%, transparent); mask: linear-gradient(#000 45%, transparent);
   }
   .pcnav.top .logo { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); }
@@ -691,13 +692,13 @@
     height: 40px; padding: 0 10px; border: 0; border-radius: 25px; background: none; color: inherit;
     transition: background-color .2s, color .2s;
   }
-  .pcnav.top nav button:hover { background-color: rgba(38, 87, 70, 0.7); color: #fff; }
+  .pcnav.top nav button:hover { background-color: rgba(255, 255, 255, 0.18); color: #fff; }
   .pcnav.top .right { flex: none; display: flex; align-items: center; gap: 12px; }
   /* Слева: свёрнут — кружки 50 (иконка 28 по центру), при наведении — ширина 252 с подписями. */
   .pcnav.side { left: 0; top: 0; bottom: 0; width: 98px; padding: 57px 24px; flex-direction: column; transition: width .25s; }
   .pcnav.side:hover { width: 300px; }
   .pcnav.side::before {
-    left: 0; top: 0; bottom: 0; width: 230%; background: linear-gradient(90deg, rgba(16, 44, 35, 0.6), rgba(16, 44, 35, 0));
+    left: 0; top: 0; bottom: 0; width: 230%; background: linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
     -webkit-mask: linear-gradient(90deg, #000 45%, transparent); mask: linear-gradient(90deg, #000 45%, transparent);
   }
   .pcnav.side .grp { display: flex; flex-direction: column; gap: 10px; }
@@ -1201,6 +1202,15 @@
   const NAVS = [{ id: 'top', name: 'Меню: верх' }, { id: 'side', name: 'Меню: слева' }, { id: 'burger', name: 'Меню: бургер' }];
   let nav = Math.max(0, NAVS.findIndex(n => n.id === qs.get('nav')));
   const NAV_TOP_DT = 24;   // «верх»: шапки экранов и всё, что под ними, — ниже строки меню
+  // Видео «Начать» (решение 2026-10-30, сравниваем два): старт C (144 м, 12 мм) и D (198 м, 15 мм, сбоку) → orbit_000,
+  // оба — склейка «скрыт steni + Пироговская 6с1» → «скрыт Drive2» (intro_flight.py, flight_blend.py); картинка —
+  // первый кадр видео. ?intro=c|d; на ПК кнопка в углу (видна на стартовом экране) переключает с перезагрузкой.
+  // Прежние варианты (IntroBlend_LQ, IntroBlend2_LQ, Krea Static/Intro.mp4) лежат в renders, в макете не используются.
+  const INTROS = [
+    { id: 'c', name: 'Начать: C', video: 'Flight/IntroBlend3_LQ/intro.mp4', img: 'Static/Intro_Start3.webp' },
+    { id: 'd', name: 'Начать: D', video: 'Flight/IntroBlendD_LQ/intro.mp4', img: 'Static/Intro_StartD.webp' },
+  ];
+  const introIdx = Math.max(0, INTROS.findIndex(v => v.id === qs.get('intro')));
   screen.dataset.nav = PHONE ? 'burger' : NAVS[nav].id;
   if (!PHONE) {
     const bar = document.body.appendChild(Object.assign(document.createElement('div'), {
@@ -1219,6 +1229,16 @@
       location.search = q.toString();
     });
     lb.textContent = LIGHT_OLD ? 'Свет: старый' : 'Свет: новый';
+    const ib = button(() => {
+      const q = new URLSearchParams(location.search);
+      q.set('intro', INTROS[(introIdx + 1) % INTROS.length].id);
+      location.search = q.toString();
+    });
+    ib.textContent = INTROS[introIdx].name;
+    const startEl = document.getElementById('start');   // const start объявлен ниже
+    const ibShow = () => { ib.style.display = startEl.classList.contains('hidden') ? 'none' : ''; };
+    new MutationObserver(ibShow).observe(startEl, { attributes: true, attributeFilter: ['class'] });
+    ibShow();
     const nb = button(() => { nav = (nav + 1) % NAVS.length; nb.textContent = NAVS[nav].name; screen.dataset.nav = NAVS[nav].id; fit(); });
     const b = button(() => {
       sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name;
@@ -2056,7 +2076,8 @@
   // «Начать»: видео Intro (первый кадр = картинка стартового экрана, последний ≈ orbit_000) поверх картинки, шапка и
   // кнопки тают; кончилось — стартовый экран тает (.35 с) в облёт на START_ANGLE. Видео нет — сразу облёт.
   // Видео — в предзагрузке, целиком в Blob (играет без догрузки).
-  const INTRO = RENDERS + 'Static/Intro.mp4';
+  // С 2026-10-30 — пролёт из UE (INTROS): картинка — первый кадр видео (4:3).
+  const INTRO = RENDERS + INTROS[introIdx].video;
   const intro = document.getElementById('introVideo'), startImg = start.querySelector(':scope > img');
   let introOk = false;
   if (START_SHOWN) {
@@ -2065,16 +2086,17 @@
       .then(b => { intro.src = URL.createObjectURL(b); introOk = true; })
       .catch(() => console.warn('intro: нет видео — «Начать» сразу в облёт'));
   }
-  function placeStart() {   // квадрат 3840 в масштабе облёта, по центру — как кадр облёта (draw)
+  function placeStart() {   // ширина = 3840 облёта в его масштабе, по центру — как кадр облёта (draw); квадрат или 4:3
     const s = orbitScale();
     for (const el of [startImg, intro]) {
-      const w = el.videoWidth || el.naturalWidth || 3840, k = s * 3840 / w;
-      el.style.width = el.style.height = `${w}px`;
-      el.style.transform = `translate(${(W - w * k) / 2}px, ${(H - w * k) / 2}px) scale(${k})`;
+      const w = el.videoWidth || el.naturalWidth || 3840, h = el.videoHeight || el.naturalHeight || w, k = s * 3840 / w;
+      el.style.width = `${w}px`;
+      el.style.height = `${h}px`;
+      el.style.transform = `translate(${(W - w * k) / 2}px, ${(H - h * k) / 2}px) scale(${k})`;
     }
   }
   startImg.addEventListener('load', placeStart);
-  startImg.src = RENDERS + 'Static/Intro_Loading.webp';
+  startImg.src = RENDERS + INTROS[introIdx].img;
   screen.addEventListener('layout', placeStart);   // любой fit(): окно, ПК / Мобайл, меню
   intro.addEventListener('loadedmetadata', placeStart);
   startGo.onclick = async () => {
