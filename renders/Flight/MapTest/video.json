@@ -1,7 +1,0 @@
-{
- "frames": 76,
- "fps": 30,
- "forward": "map.mp4",
- "reverse": "map_rev.mp4",
- "note": "PNG frames of tools/flight_video.py: compress_renders.py skips them, copies the .mp4 as is"
-}
