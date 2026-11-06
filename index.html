@@ -3197,12 +3197,25 @@
   };
   let flying = false;
   const afterPreload = f => START_SHOWN ? preload.whenDone(f) : f();
+  // Flight videos on demand (2026-11-04): all videos used to have preload="auto", so after the preload the browser
+  // downloaded every one in full (~150 MB on a phone), though most are not needed right away. Reverse videos and the
+  // garden pair for the other screen shape now get preload="none": src is set (the "is there a video" checks stay the
+  // same), but nothing is downloaded until the flight there starts (warmFlight in flyTo), so the reverse video is
+  // buffered by the time the user goes back. Map forward loads right away, as before.
+  // preload="metadata" does not help: Chrome still downloads short files in full (checked 2026-11-04).
+  // A lazy forward video has no set chosen yet: the fallback set (onerror) is tried on its first flight.
+  // ?vpreload=all — old behaviour, everything at once.
+  const VIDEO_LAZY = qs.get('vpreload') !== 'all';
+  const lazyVideo = (f, v) => { if (VIDEO_LAZY && !f.warm) v.preload = 'none'; };
+  const warmFlight = f => { f.warm = true; for (const v of [f.fwd, f.rev]) if (v.preload !== 'auto') v.preload = 'auto'; };
   for (const f of Object.values(FLIGHTS)) {
     f.set = 0; f.ok = true;
     fetch(`data/flight/${f.json || f.name}.json`).then(r => r.json())
       .then(d => { f.angle = d.flight.from.orbitFrame * 2; })   // облёт — через 2° (data/orbit_main/camera.json)
       .catch(() => {});
     const src = () => {
+      if (f !== FLIGHTS.map) lazyVideo(f, f.fwd);
+      lazyVideo(f, f.rev);
       f.fwd.src = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}.mp4`;
       f.rev.src = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}_rev.mp4`;
     };
@@ -3210,7 +3223,7 @@
       if (++f.set < f.sets.length) src();
       else { f.ok = false; console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`); }
     };
-    f.src = () => afterPreload(src);   // видео preload="auto" — браузер сразу качает; ждут предзагрузку
+    f.src = () => afterPreload(src);   // src is set after the preload; what downloads right away — see VIDEO_LAZY
     if (f === FLIGHTS.map) mapPicked = pickMapSet(f).then(f.src);   // набор видео — тот, у которого есть картинка конца
     else if (f !== FLIGHTS.lobby && f !== FLIGHTS.garden && f !== FLIGHTS.gardenMobile) f.src();   // лобби и сад — preloadFlight
     f.fwd.master = f.rev.master = f.master || FLIGHT_MASTER;   // по нему placeVideo
@@ -3292,6 +3305,7 @@
     if (f.isOpen && f.isOpen()) return;
     if (!f.ok || floors.classList.contains('open') || !f.fwd.getAttribute('src')) { open(); return; }
     flying = true;
+    warmFlight(f);   // forward (unless in memory) and reverse download while the orbit turns and the flight plays
     try {
       // Пролёт — с общего вида: снять выбор квартиры (вид вернётся к BASE_VIEW), закрыть карту.
       screen.dispatchEvent(new Event('apartmentclear'));
@@ -3334,6 +3348,7 @@
     const close = f.close || (() => floors.classList.remove('open'));
     if (!f.ok || !f.rev.getAttribute('src')) { close(); return; }
     flying = true;
+    warmFlight(f);   // screen opened without a flight there (?floor, ?map): reverse video not loaded yet
     try {
       angle = target = f.angle; draw();   // под видео — облёт в угле пролёта
       if (f.rev.readyState < 2) await new Promise(ok => { f.rev.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
@@ -3356,7 +3371,7 @@
   fit();
   // Предзагрузка (см. вверху): видео пролётов на лобби и в сад — то, что откроется на этой форме экрана (gardenFlight,
   // нужен fit()), — целиком в память (Blob); видео играет из него без догрузки. Набор — первый, что нашёлся (f.sets).
-  // Обратные видео и второй сад — как раньше, по адресу (preload="auto").
+  // Reverse videos and the other garden — by URL, on demand (VIDEO_LAZY).
   async function preloadFlight(f) {
     for (; f.set < f.sets.length; f.set++) {
       const url = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}.mp4`;
@@ -3365,7 +3380,7 @@
       if (!r?.ok) continue;
       f.fwd.src = URL.createObjectURL(await r.blob());
       const rev = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}_rev.mp4`;
-      afterPreload(() => { f.rev.src = rev; });
+      afterPreload(() => { lazyVideo(f, f.rev); f.rev.src = rev; });
       return;
     }
     f.ok = false;
