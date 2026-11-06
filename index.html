@@ -1327,7 +1327,9 @@
   // У кадра — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
   // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё. Маски грузятся отдельно, все (pumpMasks).
   const LOAD_PARALLEL = 4;
-  const KEEP = { phone: 36, desktop: Infinity };
+  // Phone: 24 compressed frames (~43 MB, was 36 — ~65 MB) and DECODE_MB.phone 120 (was 250) — 2026-11-04: iOS Safari
+  // was killing the tab for memory. While moving, motion frames are shown; a full frame only when the orbit stops.
+  const KEEP = { phone: 24, desktop: Infinity };
   const NEAR_DEG = 10;        // «рядом с текущим углом» — грузится первым
   // Распаковка заранее. Распакованный кадр 3840×3840 — ~59 МБ (все 180 — ~10 ГБ): все держать нельзя, а распаковка
   // при показе (drawImage из <img>, и даже createImageBitmap из <img> в Chrome) идёт в основном потоке, ~100 мс на
@@ -1336,9 +1338,12 @@
   // на DECODE_MB (?decodemb=N): ближние к углу (DECODE_NEAR_DEG), затем круг через 10°. На экран идёт только
   // распакованный кадр: быстрый свайп показывает ближайший из них, остальные догружаются.
   // Выбранная квартира (приближение) у стоящего облёта — из кадра в полном разрешении (sharp), тоже распакованного заранее.
-  const DECODE_MB = { phone: 250, desktop: 700 };
+  const DECODE_MB = { phone: 120, desktop: 700 };
   const DECODE_PARALLEL = 2;
   const DECODE_NEAR_DEG = 20;
+  // Tab in background (phone): decoded frames are released while it is hidden (see "Background" below). ?bgfree=0 — off.
+  const BG_FREE = PHONE && qs.get('bgfree') !== '0';
+  let bgFreed = false;
   // Облегчённые кадры для движения (решение 2026-10-27): <набор>/motion/ — тот же облёт, 1280 px (tools/compress_renders.py).
   // Грузятся и распаковываются все (видимой полосой, в MOTION_PX по ширине кадра; телефон ~100 МБ, ПК ~660 МБ), поэтому
   // при быстром свайпе облёт пролетает все кадры подряд без пауз. В движении (и STILL_MS после) показываются они,
@@ -1452,7 +1457,7 @@
     return null;
   }
   function pumpDecode(s) {
-    if (!s.frames.size || !canvas.width) return;
+    if (!s.frames.size || !canvas.width || bgFreed) return;
     const r = bitmapRect(s.frames.values().next().value);
     const mb = +qs.get('decodemb') || (PHONE ? DECODE_MB.phone : DECODE_MB.desktop);
     const max = Math.max(3, Math.floor(mb * 1048576 / (r.w * r.h * 4)));
@@ -1518,7 +1523,7 @@
       if (m.loading.size >= MOTION_PARALLEL) break;
       if (!m.frames.has(i) && !m.loading.has(i)) loadMotion(s, i);
     }
-    if (!canvas.width) return;
+    if (!canvas.width || bgFreed) return;
     for (const i of order) {
       if (m.decoding.size >= DECODE_PARALLEL) break;
       const b = m.bitmaps.get(i);
@@ -2041,6 +2046,25 @@
   canvas.addEventListener('pointerup', () => { tsSwipeX = null; });
   canvas.addEventListener('pointercancel', () => { tsSwipeX = null; });
   if (qs.has('tslider')) openTimeSlider();
+
+  // --- Background (2026-11-04): a backgrounded tab holding hundreds of MB of decoded frames gets evicted by iOS — on
+  // return the mockup reloads or crashes. When the tab is hidden, decoded orbit frames (except the one on the canvas),
+  // the zoom frame and the time slider full frames are released; compressed ones stay. On return they are decoded
+  // again (pump), as on rotation. BG_FREE.
+  if (BG_FREE) document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      bgFreed = true;
+      for (const i of [...cur.bitmaps.keys()]) if (i !== shown) dropBitmap(cur, i);
+      dropSharp(cur);
+      dropMotion(cur);
+      for (const fr of ts.frames) { fr.full?.bmp.close(); fr.full = null; }
+    } else if (bgFreed) {
+      bgFreed = false;
+      pump();
+      draw();
+      tsDraw();
+    }
+  });
 
   // --- Бургер-меню ---
   const menu = document.getElementById('menu');
