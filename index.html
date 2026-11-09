@@ -5,13 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Погодинская — облёт</title>
 <script>
-  // Было / стало по свету (решение 2026-10-29): renders/ — новый свет (Dropbox 2026_Renders), renders_old/ — замороженная
-  // копия до смены цвета и света (Dropbox 2026_Renders_Old). ?light=old — старый. Все пути к рендерам — от RENDERS.
-  // Старый свет — только основной облёт 9:00 (RENDERS_ORBIT, решение 2026-10-30: на Pages из renders_old публикуется
-  // лишь 360_Test/HQ); 17:00, 23:00, пролёты, панорамы и всё остальное всегда новые.
-  var LIGHT_OLD = new URLSearchParams(location.search).get('light') === 'old';
+  // Все пути к рендерам — от RENDERS (Dropbox 2026_Renders → web/renders, sync.cmd); её же берёт pano.js.
+  // Переключатель «Свет: новый / старый» (renders_old/, ?light=old) убран 2026-11-09 (решение пользователя).
   var RENDERS = 'renders/';
-  var RENDERS_ORBIT = LIGHT_OLD ? 'renders_old/' : 'renders/';
 </script>
 <!-- Телефон: «На экран Домой» открывает макет без панелей браузера (iPhone — только так; Android — ещё и полноэкранный режим по первому касанию). -->
 <meta name="theme-color" content="#000000">
@@ -21,8 +17,6 @@
 <meta name="apple-mobile-web-app-title" content="Погодинская">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/app-icon-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Inter:wght@500;600&display=swap" rel="stylesheet">
 <style>
   /* Макет Figma: файл rXyl4vfPbiSi6dbmNmUYxK, фреймы 925:7868 (общий вид) и 925:7950 (бургер-меню). Экран 430×932. */
   :root {
@@ -34,8 +28,18 @@
     --page-bg: #2c2c2c;
   }
   /* Cera Pro — шрифт приложения UE (CeraPro-Font: Regular, Medium) и макета Figma. */
-  @font-face { font-family: "Cera Pro"; font-weight: 400; font-display: swap; src: url(assets/fonts/cera-pro-regular.ttf) format("truetype"); }
-  @font-face { font-family: "Cera Pro"; font-weight: 500; font-display: swap; src: url(assets/fonts/cera-pro-medium.ttf) format("truetype"); }
+  /* Все шрифты — свои файлы, WOFF2 (решение 2026-11-02, аудит загрузки: Google Fonts и jsDelivr из РФ бывают недоступны;
+     Cera Pro TTF 185 → 57 КБ). Manrope и Inter — вариативные с Google Fonts, только латиница и кириллица. */
+  @font-face { font-family: "Cera Pro"; font-weight: 400; font-display: swap; src: url(assets/fonts/cera-pro-regular.woff2) format("woff2"); }
+  @font-face { font-family: "Cera Pro"; font-weight: 500; font-display: swap; src: url(assets/fonts/cera-pro-medium.woff2) format("woff2"); }
+  @font-face { font-family: "Manrope"; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-cyrillic.woff2) format("woff2");
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+  @font-face { font-family: "Manrope"; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-latin.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Inter"; font-weight: 500 600; font-display: swap; src: url(assets/fonts/inter-cyrillic.woff2) format("woff2");
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+  @font-face { font-family: "Inter"; font-weight: 500 600; font-display: swap; src: url(assets/fonts/inter-latin.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--page-bg); overflow: hidden; }
   /* Телефон: страница на весь экран (100lvh — и под панелями Safari), фон чёрный — если где-то и проглянет, не серый. */
@@ -55,6 +59,9 @@
   /* Облёт в движении — облегчённый кадр в его разрешении, растянут на экран (draw() в скрипте); события — в #pano. */
   #panoLite { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
   #panoLite.on { display: block; }
+  /* Смена часа перед пролётом: снимок прежнего кадра поверх облёта тает (setHour(h, fade) в скрипте). */
+  #hourFade { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
+  #hourFade.on { display: block; }
   /* 3D поверх кадра (подсветки квартир), события проходят насквозь в #pano. */
   #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
@@ -789,11 +796,12 @@
 <div id="screen">
   <canvas id="pano"></canvas>
   <canvas id="panoLite"></canvas>
+  <canvas id="hourFade"></canvas>
   <div id="timeShot"><canvas></canvas></div>
   <canvas id="overlay"></canvas>
   <div class="flight" id="mapFlight">   <!-- пролёт облёт → карта: под картой, шапкой и доком (Figma «Район») -->
-    <video id="mapFwd" muted playsinline preload="auto"></video>
-    <video id="mapRev" muted playsinline preload="auto"></video>
+    <video id="mapFwd" muted playsinline preload="metadata"></video>
+    <video id="mapRev" muted playsinline preload="metadata"></video>
   </div>
   <div class="mapview" id="mapView">
     <div id="mapLayer"><img id="mapImg" alt="" draggable="false"></div>   <!-- кадр целиком + плитки 16K (mapTiles) -->
@@ -886,12 +894,12 @@
   </div>
 
   <div class="flight" id="flight">
-    <video id="flightFwd" muted playsinline preload="auto"></video>
-    <video id="flightRev" muted playsinline preload="auto"></video>
-    <video id="gardenFwd" muted playsinline preload="auto"></video>
-    <video id="gardenRev" muted playsinline preload="auto"></video>
-    <video id="gardenMobileFwd" muted playsinline preload="auto"></video>
-    <video id="gardenMobileRev" muted playsinline preload="auto"></video>
+    <video id="flightFwd" muted playsinline preload="metadata"></video>
+    <video id="flightRev" muted playsinline preload="metadata"></video>
+    <video id="gardenFwd" muted playsinline preload="metadata"></video>
+    <video id="gardenRev" muted playsinline preload="metadata"></video>
+    <video id="gardenMobileFwd" muted playsinline preload="metadata"></video>
+    <video id="gardenMobileRev" muted playsinline preload="metadata"></video>
   </div>
 
   <div class="floors" id="floors">
@@ -1067,7 +1075,14 @@
   };
   function pad(n) { return String(n).padStart(3, '0'); }
   const SET = new URLSearchParams(location.search).get('set') || 'HQ';   // ?set=LQ — старый тестовый набор
-  const DIR = `${RENDERS_ORBIT}360_Test/${SET}/`;
+  // DLSS 5 на облёте 9:00 (решение 2026-11-09, сравнение): варианты orbit_render.py dlss=<ключ> → 360_Test/HQ_dlss_<ключ>
+  // (Intensity / Local Tone). На ПК кнопка в углу перебирает их на месте (setOrbitDlss — как смена часа, с наплывом);
+  // ?dlss=1_1|1_0|05_05 — сразу вариант. 17:00 / 23:00 и пролёты — без DLSS. Только набор HQ.
+  const ORBIT_DLSS = [{ id: '', name: 'Облёт: без DLSS' }, { id: '1_1', name: 'DLSS: 1 / 1' },
+                      { id: '1_0', name: 'DLSS: 1 / 0' }, { id: '05_05', name: 'DLSS: 0.5 / 0.5' }];
+  let orbitDlss = SET === 'HQ' ? Math.max(0, ORBIT_DLSS.findIndex(v => v.id && v.id === new URLSearchParams(location.search).get('dlss'))) : 0;
+  const orbitDir = k => `${RENDERS}360_Test/${SET}${ORBIT_DLSS[k].id ? `_dlss_${ORBIT_DLSS[k].id}` : ''}/`;
+  const DIR = orbitDir(orbitDlss);
   const set = SETS[SET] || SETS.HQ;
   const DEG_PER_PX = 0.35;   // сколько градусов облёта на пиксель свайпа (в координатах экрана 430×932)
   // Выбранная квартира (тап по подсветке в режиме «квартиры»): кадр приближается и поднимается вверх по экрану (дом уходит от кнопок).
@@ -1101,7 +1116,7 @@
     let last = performance.now();
     const tick = () => { last = performance.now(); if (!queued) { queued = true; requestAnimationFrame(report); } };
     function finish(it, ok) { it.done = true; if (!ok) it.est = 0; else it.est = Math.max(it.got, 1); tick(); }
-    // Страховка: PRELOAD_STALL_MS ни байта (не загрузился three.js с CDN, сервер не отвечает) — оставшееся из счёта
+    // Страховка: PRELOAD_STALL_MS ни байта (не загрузился three.js, сервер не отвечает) — оставшееся из счёта
     // выпадает, «Начать» оживает.
     const PRELOAD_STALL_MS = 20000;
     const stall = setInterval(() => {
@@ -1207,10 +1222,13 @@
   // первый кадр видео. ?intro=c|d; на ПК кнопка в углу (видна на стартовом экране) переключает с перезагрузкой.
   // Прежние варианты (IntroBlend_LQ, IntroBlend2_LQ, Krea Static/Intro.mp4) лежат в renders, в макете не используются.
   const INTROS = [
-    { id: 'c', name: 'Начать: C', video: 'Flight/IntroBlend3_LQ/intro.mp4', img: 'Static/Intro_Start3.webp' },
-    { id: 'd', name: 'Начать: D', video: 'Flight/IntroBlendD_LQ/intro.mp4', img: 'Static/Intro_StartD.webp' },
+    { id: 'c', name: 'Начать: C', video: 'Flight/IntroBlend3/intro.mp4', img: 'Static/Intro_Start3.webp', bytes: 16.1e6, strip: 13.6e6 },   // HQ (4K → 2560)
+    { id: 'd', name: 'Начать: D', video: 'Flight/IntroBlendD/intro.mp4', img: 'Static/Intro_StartD.webp', bytes: 13.1e6, strip: 11.3e6 },   // HQ с 2026-11-09 (4K → 2560)
   ];
   const introIdx = Math.max(0, INTROS.findIndex(v => v.id === qs.get('intro')));
+  const PHONE_STRIP_W = 1620;   // ширина полосы пролётов для вертикального телефона, px кадра 3840 (stripFits, introFits)
+  // Проба DLSS 5 на пролёте в сад (Garden_DLSS_tone0, garden_K_dlss, 2026-11-02) из макета убрана 2026-11-09:
+  // переключатель DLSS теперь у облёта 9:00 (ORBIT_DLSS).
   screen.dataset.nav = PHONE ? 'burger' : NAVS[nav].id;
   if (!PHONE) {
     const bar = document.body.appendChild(Object.assign(document.createElement('div'), {
@@ -1221,14 +1239,11 @@
         'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
       onclick,
     }));
-    // Свет: новый / старый (RENDERS_ORBIT, ?light=old) — перезагрузка с тем же адресом; облёт открывается на том же угле.
-    const lb = button(() => {
-      const q = new URLSearchParams(location.search);
-      if (!LIGHT_OLD) q.set('light', 'old'); else q.delete('light');
-      if (start.classList.contains('hidden')) q.set('angle', Math.round(((angle % 360) + 360) % 360));
-      location.search = q.toString();
-    });
-    lb.textContent = LIGHT_OLD ? 'Свет: старый' : 'Свет: новый';
+    // DLSS облёта 9:00 (ORBIT_DLSS): по кругу без DLSS → 1/1 → 1/0 → 0.5/0.5, на месте (setOrbitDlss).
+    if (SET === 'HQ') {
+      const ob = button(() => { setOrbitDlss((orbitDlss + 1) % ORBIT_DLSS.length); ob.textContent = ORBIT_DLSS[orbitDlss].name; });
+      ob.textContent = ORBIT_DLSS[orbitDlss].name;
+    }
     const ib = button(() => {
       const q = new URLSearchParams(location.search);
       q.set('intro', INTROS[(introIdx + 1) % INTROS.length].id);
@@ -1323,13 +1338,13 @@
   // ближайший загруженный кадр), затем через 10°, затем остальные — от ближних к текущему углу к дальним.
   // Приоритет пересчитывается при повороте. Одновременно грузится LOAD_PARALLEL кадров.
   // Загруженный кадр — сжатый WebP в памяти (Blob, ~1.3 МБ). Телефон держит не больше KEEP.phone кадров: дальние от
-  // текущего угла выгружаются и при повороте грузятся снова (из кэша браузера). ?keep=N — свой предел.
+  // текущего угла выгружаются и при повороте грузятся снова (из кэша браузера); ПК — KEEP.desktop. ?keep=N — свой предел.
   // У кадра — маска дома mask/<кадр> (белый = виден наш дом): overlay.js прячет подсветки там, где дом
   // закрыт деревьями и т.п. Нет маски — подсветки рисуются без неё. Маски грузятся отдельно, все (pumpMasks).
   const LOAD_PARALLEL = 4;
-  // Phone: 24 compressed frames (~43 MB, was 36 — ~65 MB) and DECODE_MB.phone 120 (was 250) — 2026-11-04: iOS Safari
-  // was killing the tab for memory. While moving, motion frames are shown; a full frame only when the orbit stops.
-  const KEEP = { phone: 24, desktop: Infinity };
+  // Телефон: 24 сжатых кадра (~43 МБ, было 36 — ~65 МБ) и DECODE_MB.phone 120 (было 250) — 2026-11-06, PR #2 (Никита):
+  // iOS Safari закрывал вкладку по памяти. В движении показываются облегчённые кадры, полный — когда облёт встал.
+  const KEEP = { phone: 24, desktop: 60 };   // ПК — до 2026-11-02 все 180 (278 МБ фоном, аудит загрузки)
   const NEAR_DEG = 10;        // «рядом с текущим углом» — грузится первым
   // Распаковка заранее. Распакованный кадр 3840×3840 — ~59 МБ (все 180 — ~10 ГБ): все держать нельзя, а распаковка
   // при показе (drawImage из <img>, и даже createImageBitmap из <img> в Chrome) идёт в основном потоке, ~100 мс на
@@ -1341,7 +1356,7 @@
   const DECODE_MB = { phone: 120, desktop: 700 };
   const DECODE_PARALLEL = 2;
   const DECODE_NEAR_DEG = 20;
-  // Tab in background (phone): decoded frames are released while it is hidden (see "Background" below). ?bgfree=0 — off.
+  // Вкладка в фоне (телефон): распакованные кадры отпускаются, пока она скрыта (см. «Фон» ниже). ?bgfree=0 — выключить.
   const BG_FREE = PHONE && qs.get('bgfree') !== '0';
   let bgFreed = false;
   // Облегчённые кадры для движения (решение 2026-10-27): <набор>/motion/ — тот же облёт, 1280 px (tools/compress_renders.py).
@@ -1652,7 +1667,7 @@
     preload.add(`data/building/${name}.glb`, est);
   }
   for (const w of [400, 500]) {   // Cera Pro (@font-face вверху) грузится, только когда попросят
-    preload.add('font:' + w, 185e3);
+    preload.add('font:' + w, 57e3);
     document.fonts.load(`${w} 16px "Cera Pro"`).then(() => preload.done('font:' + w), () => preload.done('font:' + w, false));
   }
   pump();
@@ -1836,7 +1851,15 @@
     }
     return timeSets[h];
   }
-  async function setHour(h) {
+  // Смена часа перед пролётом (решение 2026-11-02): прежний кадр тает в кадр нового часа того же угла за HOUR_FADE_MS,
+  // потом пролёт — без скачка 17:00/23:00 → 9:00 на первом кадре видео. ?hourfade=мс, 0 — мгновенно, как раньше.
+  const HOUR_FADE_MS = qs.has('hourfade') ? +qs.get('hourfade') : 600;
+  const hourFade = document.getElementById('hourFade'), hourFadeCtx = hourFade.getContext('2d');
+  const rafWait = async (cond, ms) => {
+    const t0 = performance.now();
+    while (!cond() && performance.now() - t0 < ms) await new Promise(requestAnimationFrame);
+  };
+  async function setHour(h, fade = false) {
     const req = ++hourReq;
     hour = h;
     for (const b of timebar.querySelectorAll('.pt')) {
@@ -1846,6 +1869,14 @@
     }
     const s = await hourSet(h);
     if (req !== hourReq || s === cur) return;
+    fade = fade && HOUR_FADE_MS > 0;
+    if (fade) {   // снимок того, что на экране (полный кадр или облегчённый поверх него)
+      hourFade.width = canvas.width; hourFade.height = canvas.height;
+      hourFadeCtx.drawImage(canvas, 0, 0);
+      if (liteCanvas.classList.contains('on')) hourFadeCtx.drawImage(liteCanvas, 0, 0, canvas.width, canvas.height);
+      hourFade.style.transition = 'none'; hourFade.style.opacity = 1;
+      hourFade.classList.add('on');
+    }
     if (PHONE) {   // телефон: в памяти — кадры одного набора (прежний кадр остаётся на холсте, пока не придёт новый)
       abortLoading(cur);
       for (const i of [...cur.frames.keys()]) unload(cur, i);
@@ -1859,6 +1890,26 @@
     pumpedAt = Math.round(angle / cur.def.stepDeg);
     pump();
     draw();
+    if (!fade) return;
+    // Ждём полный кадр нового часа у этого угла (не дольше 3 с), потом снимок тает.
+    await rafWait(() => cur.available.length && cur.bitmaps.has(nearestFrame()), 3000);
+    draw(true);
+    await new Promise(requestAnimationFrame);
+    hourFade.style.transition = `opacity ${HOUR_FADE_MS}ms ease-in-out`;
+    hourFade.style.opacity = 0;
+    await new Promise(r => setTimeout(r, HOUR_FADE_MS));
+    hourFade.classList.remove('on');
+  }
+  // DLSS облёта (ORBIT_DLSS): вариант — свой набор 9:00; наборы вариантов остаются в orbitDlssSets (как часы в timeSets).
+  // Открыт 9:00 — смена с наплывом, как у часа; открыт другой час — новый вариант появится при возврате к 9:00.
+  const orbitDlssSets = { [orbitDlss]: cur };
+  function setOrbitDlss(k) {
+    orbitDlss = k;
+    timeSets[9] = orbitDlssSets[k] ||= makeSet(orbitDir(k), set);
+    const q = new URLSearchParams(location.search);
+    if (ORBIT_DLSS[k].id) q.set('dlss', ORBIT_DLSS[k].id); else q.delete('dlss');
+    history.replaceState(null, '', `${location.pathname}?${q}`.replace(/\?$/, ''));
+    if (hour === 9) setHour(9, true);
   }
   for (const b of timebar.querySelectorAll('.pt')) b.onclick = () => setHour(+b.dataset.hour);
   lightBtn.onclick = () => {
@@ -2047,10 +2098,9 @@
   canvas.addEventListener('pointercancel', () => { tsSwipeX = null; });
   if (qs.has('tslider')) openTimeSlider();
 
-  // --- Background (2026-11-04): a backgrounded tab holding hundreds of MB of decoded frames gets evicted by iOS — on
-  // return the mockup reloads or crashes. When the tab is hidden, decoded orbit frames (except the one on the canvas),
-  // the zoom frame and the time slider full frames are released; compressed ones stay. On return they are decoded
-  // again (pump), as on rotation. BG_FREE.
+  // --- Фон (2026-11-06, PR #2): вкладку в фоне с сотнями МБ распакованных кадров iOS выгружает — при возврате макет
+  // перезагружается или падает. Скрыли вкладку — отпускаются распакованные кадры облёта (кроме того, что на холсте),
+  // кадр приближения и полные кадры часов; сжатые остаются. Вернулись — распаковываются снова (pump), как при повороте.
   if (BG_FREE) document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       bgFreed = true;
@@ -2104,16 +2154,25 @@
   const INTRO = RENDERS + INTROS[introIdx].video;
   const intro = document.getElementById('introVideo'), startImg = start.querySelector(':scope > img');
   let introOk = false;
-  if (START_SHOWN) {
-    preload.add(INTRO, 4e6);
-    preload.fetch(INTRO).then(r => r.ok ? r.blob() : Promise.reject())
-      .then(b => { intro.src = URL.createObjectURL(b); introOk = true; })
-      .catch(() => console.warn('intro: нет видео — «Начать» сразу в облёт'));
-  }
+  // Вертикальный телефон — полоса из середины (intro_phone.mp4, PHONE_STRIP_W выше, у INTROS со strip — её вес): видео
+  // стоит в масштабе облёта, видно W/2 / orbitScale от середины. fit() ещё не было — форма по окну.
+  const introFits = (r = innerWidth / innerHeight) => r * 2880 / 2 <= PHONE_STRIP_W / 2 - 4;   // 2880 — высота кадра
+  const INTRO_STRIP = INTROS[introIdx].strip && introFits() && INTRO.replace(/\.mp4$/, '_phone.mp4');
+  if (START_SHOWN) (async () => {
+    for (const url of [INTRO_STRIP, INTRO].filter(Boolean)) {
+      preload.add(url, url === INTRO ? INTROS[introIdx].bytes : INTROS[introIdx].strip);   // вес в полосе загрузки — размер файла
+      const r = await preload.fetch(url).catch(() => null);
+      if (!r?.ok) continue;   // нет полосы — полный файл
+      intro.src = URL.createObjectURL(await r.blob()); introOk = true;
+      return;
+    }
+    console.warn('intro: нет видео — «Начать» сразу в облёт');
+  })();
   function placeStart() {   // ширина = 3840 облёта в его масштабе, по центру — как кадр облёта (draw); квадрат или 4:3
     const s = orbitScale();
     for (const el of [startImg, intro]) {
-      const w = el.videoWidth || el.naturalWidth || 3840, h = el.videoHeight || el.naturalHeight || w, k = s * 3840 / w;
+      const w = el.videoWidth || el.naturalWidth || 3840, h = el.videoHeight || el.naturalHeight || w;
+      const k = el === intro ? s * 2880 / (intro.videoHeight || 2880) : s * 3840 / w;   // видео — по высоте (полоса — середина)
       el.style.width = `${w}px`;
       el.style.height = `${h}px`;
       el.style.transform = `translate(${(W - w * k) / 2}px, ${(H - h * k) / 2}px) scale(${k})`;
@@ -2126,6 +2185,8 @@
   startGo.onclick = async () => {
     if (startGo.classList.contains('wait') || start.classList.contains('playing')) return;
     if (introOk) {
+      // Повернули экран, и полосы уже не хватает ширины — полный файл (по адресу, догружается на ходу).
+      if (intro.src.startsWith('blob:') && intro.videoWidth && intro.videoWidth < intro.videoHeight && !introFits(W / H)) intro.src = INTRO;
       if (intro.readyState < 2) await new Promise(ok => { intro.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
       intro.currentTime = 0;
       start.classList.add('playing');
@@ -2689,12 +2750,13 @@
       return d;
     });
   }
+  const shotSrc = shot => FLOORS_DIR + shot.file.replace(/\.png$/i, '.webp');
   function shotImg(shot) {
     if (shot.img) return shot.img;
     const img = shot.img = new Image();
     img.className = 'shot'; img.alt = ''; img.draggable = false;
     shot.loaded = new Promise(ok => { img.onload = ok; img.onerror = ok; });
-    img.src = FLOORS_DIR + shot.file.replace(/\.png$/i, '.webp');
+    img.src = shotSrc(shot);
     floorShots.appendChild(img);
     return img;
   }
@@ -3189,6 +3251,9 @@
   // приложения, объектив 25 → 75 мм, 9:00 → 18.9), в конце наплывает карта на старте (MAP_START_ZOOM); та же кнопка и
   // «ОБЩИЙ ВИД» — map_rev.mp4. Видео карты — в своём слое под шапкой и доком (#mapFlight). ?mflight=<набор> — свой.
   const FLIGHT_DIR = RENDERS + 'Flight/';
+  const FLIGHT_FILES = {};   // набор → имя видео, если не f.name (flight_video.py — по папке)
+  const flightFile = (f, set = f.sets[f.set]) => `${FLIGHT_DIR}${set}/${FLIGHT_FILES[set] || f.name}`;   // без .mp4
+  function gardenSets() { return qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ']; }
   const FLIGHT_MASTER = { w: 3840, h: 2880 }, FLOOR_MASTER = { w: 3840, h: 2160 };   // кадр пролёта и кадр F1 / K, px
   const MOBILE_FLIGHT_MASTER = { w: 2160, h: 3840 };   // кадр вертикального пролёта в сад = K_mobile, px
   const FLIGHT_FADE_MS = 250;   // наплыв экрана этажей (transition .floors)
@@ -3198,11 +3263,11 @@
     // entry (кадры этажей с центром на входе): видео LobbyEntry (ue/flight_render.py entry), пока его нет — обычное.
     // 4K перерендерен 2026-10-29 (конец floor_shots.ENTRY.editCm, взгляд на лобби) — первым склейка LobbyEntryBlend:
     // «здание целиком» → «скрыто» по прозрачности (tools/flight_blend.py); ?flight=LobbyEntry — без склейки.
-    lobby: { name: 'lobby', json: ENTRY ? 'lobby_entry' : 'lobby', angle: 155 * 2, endDx: lobbyEndDx,
+    lobby: { name: 'lobby', json: ENTRY ? 'lobby_entry' : 'lobby', angle: 155 * 2, endDx: lobbyEndDx, strip: true,
              sets: qs.has('flight') ? [qs.get('flight')] : ENTRY ? ['LobbyEntryBlend', 'LobbyEntry', 'LobbyEntryBlend_LQ', 'LobbyEntry_LQ', 'Lobby', 'Lobby_LQ'] : ['Lobby', 'Lobby_LQ'],
              fwd: document.getElementById('flightFwd'), rev: document.getElementById('flightRev') },
     // Сад: 4K Garden / GardenMobile перерендерены 2026-10-29 (камера «смотрит на сад», решение 2026-10-27).
-    garden: { name: 'garden', sets: qs.has('gflight') ? [qs.get('gflight')] : ['Garden', 'Garden_LQ'], angle: 25 * 2,
+    garden: { name: 'garden', sets: gardenSets(), angle: 25 * 2,
               fwd: document.getElementById('gardenFwd'), rev: document.getElementById('gardenRev') },
     // Вертикальный пролёт в K_mobile (ue/garden_flight.py … mobile, решение 2026-10-26): видео 9:16, первый кадр —
     // середина кадра облёта 4:3 той же высоты, последний — K_mobile. Стартовый кадр облёта свой — orbit_019 (решение
@@ -3213,7 +3278,7 @@
                     startScale: () => orbitScale() * FLIGHT_MASTER.h / MOBILE_FLIGHT_MASTER.h,   // высота кадра облёта = высота видео
                     endScale: () => Math.max(W / MOBILE_FLIGHT_MASTER.w, H / MOBILE_FLIGHT_MASTER.h) },   // K_mobile cover
     // Карта: 4K Map перерендерен 2026-10-29 (отдаление «в разах», LOG_ZOOM).
-    map: { name: 'map', sets: qs.has('mflight') ? [qs.get('mflight')] : ['Map', 'Map_LQ'], angle: 2 * 2,
+    map: { name: 'map', sets: qs.has('mflight') ? [qs.get('mflight')] : ['Map', 'Map_LQ'], angle: 2 * 2, strip: true,
            fwd: document.getElementById('mapFwd'), rev: document.getElementById('mapRev'),
            ease: t => t * t * (3 - 2 * t),   // VTBlend_Cubic — бленд вида приложения на камеру карты
            endScale: () => floorScale() * MAP_START_ZOOM, isOpen: () => mapView.classList.contains('open'),
@@ -3221,35 +3286,42 @@
   };
   let flying = false;
   const afterPreload = f => START_SHOWN ? preload.whenDone(f) : f();
-  // Flight videos on demand (2026-11-04): all videos used to have preload="auto", so after the preload the browser
-  // downloaded every one in full (~150 MB on a phone), though most are not needed right away. Reverse videos and the
-  // garden pair for the other screen shape now get preload="none": src is set (the "is there a video" checks stay the
-  // same), but nothing is downloaded until the flight there starts (warmFlight in flyTo), so the reverse video is
-  // buffered by the time the user goes back. Map forward loads right away, as before.
-  // preload="metadata" does not help: Chrome still downloads short files in full (checked 2026-11-04).
-  // A lazy forward video has no set chosen yet: the fallback set (onerror) is tried on its first flight.
-  // ?vpreload=all — old behaviour, everything at once.
-  const VIDEO_LAZY = qs.get('vpreload') !== 'all';
-  const lazyVideo = (f, v) => { if (VIDEO_LAZY && !f.warm) v.preload = 'none'; };
-  const warmFlight = f => { f.warm = true; for (const v of [f.fwd, f.rev]) if (v.preload !== 'auto') v.preload = 'auto'; };
+  // Полоса для вертикального телефона (решение 2026-11-03, tools/flight_video.py PHONE_STRIP): у пролётов со strip рядом
+  // с видео — <имя>_phone(_rev).mp4, середина мастер-кадра PHONE_STRIP_W px во всю высоту, без уменьшения (полное
+  // 2560×1920 телефон растягивал в ~1.3 раза; на экране Pro Max полоса на 4–5 дБ чище). Берётся, если за весь пролёт
+  // (масштаб от s0 к s1 и сдвиг endDx с одной кривой) на экран не попадает ничего за её краями. PHONE_STRIP_W — у INTROS.
+  function stripFits(f) {
+    const s0 = f.startScale ? f.startScale() : Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // orbitScale
+    const s1 = f.endScale ? f.endScale() : Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);         // floorScale
+    const dx1 = f.endDx ? f.endDx(s1) : 0;
+    for (let i = 0; i <= 20; i++) {
+      const u = i / 20;
+      if ((W / 2 + Math.abs(dx1) * u) / (s0 + (s1 - s0) * u) > PHONE_STRIP_W / 2 - 4) return false;
+    }
+    return true;
+  }
   for (const f of Object.values(FLIGHTS)) {
     f.set = 0; f.ok = true;
     fetch(`data/flight/${f.json || f.name}.json`).then(r => r.json())
       .then(d => { f.angle = d.flight.from.orbitFrame * 2; })   // облёт — через 2° (data/orbit_main/camera.json)
       .catch(() => {});
+    const wantTag = () => f.strip && f.stripOk !== false && stripFits(f) ? '_phone' : '';
     const src = () => {
-      if (f !== FLIGHTS.map) lazyVideo(f, f.fwd);
-      lazyVideo(f, f.rev);
-      f.fwd.src = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}.mp4`;
-      f.rev.src = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}_rev.mp4`;
+      f.tag = wantTag();
+      f.fwd.src = `${flightFile(f)}${f.tag}.mp4`;
+      f.rev.src = `${flightFile(f)}${f.tag}_rev.mp4`;
     };
     f.fwd.onerror = () => {
+      if (f.tag) { f.stripOk = false; src(); return; }   // нет полосы для телефона — полный файл того же набора
+      f.stripOk = undefined;
       if (++f.set < f.sets.length) src();
       else { f.ok = false; console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`); }
     };
-    f.src = () => afterPreload(src);   // src is set after the preload; what downloads right away — see VIDEO_LAZY
+    // Форма экрана могла смениться — полоса или полный файл по ней (перед пролётом и фоновой загрузкой).
+    f.sync = () => { if (f.fwd.getAttribute('src') && f.tag !== wantTag()) src(); };
+    f.src = () => afterPreload(src);   // preload="metadata" — только заголовок (набор по onerror); целиком — blobVideo
     if (f === FLIGHTS.map) mapPicked = pickMapSet(f).then(f.src);   // набор видео — тот, у которого есть картинка конца
-    else if (f !== FLIGHTS.lobby && f !== FLIGHTS.garden && f !== FLIGHTS.gardenMobile) f.src();   // лобби и сад — preloadFlight
+    else f.src();
     f.fwd.master = f.rev.master = f.master || FLIGHT_MASTER;   // по нему placeVideo
   }
   async function pickMapSet(f) {
@@ -3262,9 +3334,11 @@
   const easeIO = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;   // как у камеры приложения (степень 2)
   const orbitScale = () => Math.max(W / FLIGHT_MASTER.w, H / FLIGHT_MASTER.h);   // px дизайна на px мастер-кадра
   const floorScale = () => Math.max(W / FLOOR_MASTER.w, H / FLOOR_MASTER.h);
-  function placeVideo(v, s, dx = 0) {   // s — масштаб мастер-кадра; видео любого разрешения растягивается до него, по центру
-    const m = v.master || FLIGHT_MASTER;                                // dx — сдвиг вправо, px дизайна
-    const k = s * m.w / (v.videoWidth || m.w);
+  // s — масштаб мастер-кадра; видео любого разрешения растягивается до него по высоте, по центру (полоса для телефона —
+  // середина мастер-кадра во всю высоту); dx — сдвиг вправо, px дизайна.
+  function placeVideo(v, s, dx = 0) {
+    const m = v.master || FLIGHT_MASTER;
+    const k = s * m.h / (v.videoHeight || m.h);
     const w = (v.videoWidth || m.w), h = (v.videoHeight || m.h);
     v.style.width = `${w}px`; v.style.height = `${h}px`;
     v.style.transform = `translate(${(W - w * k) / 2 + dx}px, ${(H - h * k) / 2}px) scale(${k})`;
@@ -3329,21 +3403,24 @@
     if (f.isOpen && f.isOpen()) return;
     if (!f.ok || floors.classList.contains('open') || !f.fwd.getAttribute('src')) { open(); return; }
     flying = true;
-    warmFlight(f);   // forward (unless in memory) and reverse download while the orbit turns and the flight plays
+    f.sync();                          // полоса для телефона или полный файл — по форме экрана сейчас
+    const loaded = blobReady(f.fwd);   // догружается, пока облёт поворачивается
     try {
       // Пролёт — с общего вида: снять выбор квартиры (вид вернётся к BASE_VIEW), закрыть карту.
       screen.dispatchEvent(new Event('apartmentclear'));
       setMap(false);
       closeTimeSlider();     // пролёт — от облёта в его часе
       await waitFor(() => !tween, 1000);
-      if (hour !== 9) await setHour(9);   // видео пролётов — в 9:00
+      if (hour !== 9) await setHour(9, true);   // видео пролётов — в 9:00: кадр часа тает в 9:00, потом пролёт
       await rotateTo(f.angle);
       await waitFor(() => shown === f.angle, 3000);
+      await loaded;
       if (f === FLIGHTS.map) screen.classList.add('map-flight');
       const s1 = (f.endScale || floorScale)();
       const ok = await playFlight(f.fwd, (f.startScale || orbitScale)(), s1, f.ease, 0, f.endDx ? f.endDx(s1) : 0);
       fittedSet = null;      // кадр — с вида на весь экран, как последний кадр видео
       open();
+      blobVideo(f.rev);      // обратное — пока смотрят экран (blobVideo)
       if (ok) await new Promise(r => setTimeout(r, FLIGHT_FADE_MS + 50));
     } finally {
       flightDone();
@@ -3372,8 +3449,9 @@
     const close = f.close || (() => floors.classList.remove('open'));
     if (!f.ok || !f.rev.getAttribute('src')) { close(); return; }
     flying = true;
-    warmFlight(f);   // screen opened without a flight there (?floor, ?map): reverse video not loaded yet
     try {
+      f.sync?.();
+      await blobReady(f.rev);
       angle = target = f.angle; draw();   // под видео — облёт в угле пролёта
       if (f.rev.readyState < 2) await new Promise(ok => { f.rev.addEventListener('loadeddata', ok, { once: true }); setTimeout(ok, 3000); });
       f.rev.currentTime = 0;
@@ -3393,27 +3471,32 @@
   addEventListener('resize', refit);
   if (window.visualViewport) visualViewport.addEventListener('resize', refit);
   fit();
-  // Предзагрузка (см. вверху): видео пролётов на лобби и в сад — то, что откроется на этой форме экрана (gardenFlight,
-  // нужен fit()), — целиком в память (Blob); видео играет из него без догрузки. Набор — первый, что нашёлся (f.sets).
-  // Reverse videos and the other garden — by URL, on demand (VIDEO_LAZY).
-  async function preloadFlight(f) {
-    for (; f.set < f.sets.length; f.set++) {
-      const url = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}.mp4`;
-      preload.add(url, 13e6);
-      const r = await preload.fetch(url).catch(() => null);
-      if (!r?.ok) continue;
-      f.fwd.src = URL.createObjectURL(await r.blob());
-      const rev = `${FLIGHT_DIR}${f.sets[f.set]}/${f.name}_rev.mp4`;
-      afterPreload(() => { lazyVideo(f, f.rev); f.rev.src = rev; });
-      return;
+  // Видео пролётов (решение 2026-11-02, аудит загрузки; до этого лобби и сад были в предзагрузке, остальные — preload="auto"
+  // и качались все, даже второй сад на ПК): до «Начать» не нужны — в <video> только адрес и заголовок. После предзагрузки
+  // фоном, по очереди, целиком в Blob (играет без догрузки) — вперёд: лобби, сад той формы экрана, что сейчас
+  // (gardenFlight), карта. Обратное — так же, когда пролёт вперёд закончился (flyTo). Нажали раньше — пролёт ждёт Blob
+  // (blobReady: загрузка этого видео, начатая или новая, параллельно с остальными), но не дольше BLOB_WAIT_MS — потом
+  // играет по адресу. По адресу без запаса 1-секундный пролёт на 50 Мбит/с шёл рывками 6 с (проверка 2026-11-02).
+  const BLOB_WAIT_MS = 8000;
+  function blobVideo(v) {
+    return v.blobJob ||= (async () => {
+      for (;;) {
+        const url = v.getAttribute('src');
+        if (!url || url.startsWith('blob:')) return;
+        const b = await fetch(url).then(r => r.ok ? r.blob() : null).catch(() => null);
+        if (b) { if (v.getAttribute('src') === url && !v.classList.contains('on')) v.src = URL.createObjectURL(b); return; }
+        await new Promise(r => setTimeout(r, 1000));   // нет файла — onerror переходит к следующему набору (f.sets)
+        if (v.getAttribute('src') === url) return;
+      }
+    })().finally(() => { v.blobJob = null; });
+  }
+  const blobReady = v => Promise.race([blobVideo(v), new Promise(r => setTimeout(r, BLOB_WAIT_MS))]);
+  afterPreload(async () => {
+    for (const f of [FLIGHTS.lobby, gardenFlight(), FLIGHTS.map]) {
+      if (f === FLIGHTS.map) await mapPicked;
+      if (f.ok) { f.sync(); await blobVideo(f.fwd); }
     }
-    f.ok = false;
-    console.warn(`flight: нет видео ${f.name} — экран открывается без пролёта`);
-  }
-  {
-    const garden = gardenFlight();
-    for (const f of [FLIGHTS.lobby, FLIGHTS.garden, FLIGHTS.gardenMobile]) f === FLIGHTS.lobby || f === garden ? preloadFlight(f) : f.src();
-  }
+  });
   // Android: полноэкранный режим по первому касанию (iPhone так не умеет — там «На экран Домой»).
   if (PHONE && document.documentElement.requestFullscreen && matchMedia('(display-mode: browser)').matches) {
     addEventListener('pointerup', () => {
@@ -3424,9 +3507,9 @@
 </script>
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
-  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js"
+  "three": "./lib/three@0.170.0/build/three.module.min.js",
+  "three/addons/": "./lib/three@0.170.0/examples/jsm/",
+  "three-mesh-bvh": "./lib/three-mesh-bvh@0.8.3/index.module.js"
 } }
 </script>
 <script type="module" src="overlay.js"></script>
