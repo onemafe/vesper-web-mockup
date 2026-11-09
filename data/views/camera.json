@@ -13,7 +13,7 @@
       14270.177382761125
      ],
      "startView": {
-      "pitch": -10.217350006103468,
+      "pitch": -10.217350006103473,
       "yaw": 117.66483306884757
      },
      "limits": {
@@ -31,7 +31,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-01_1",
@@ -62,7 +62,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-01_2",
@@ -93,7 +93,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     }
    ],
    "count": 3,
@@ -112,8 +112,8 @@
       14270.944676
      ],
      "startView": {
-      "pitch": -7.95138670365881e-16,
-      "yaw": -105.39430999755857
+      "pitch": 7.951386703658736e-16,
+      "yaw": -105.39430999755855
      },
      "limits": {
       "perpendicular": 231.0,
@@ -130,7 +130,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-02_1",
@@ -161,7 +161,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-02_2",
@@ -192,7 +192,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     }
    ],
    "count": 3,
@@ -229,7 +229,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-03_1",
@@ -260,7 +260,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-03_2",
@@ -291,7 +291,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     }
    ],
    "count": 3,
@@ -328,7 +328,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-04_1",
@@ -359,7 +359,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-02-04_2",
@@ -390,7 +390,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     }
    ],
    "count": 3,
@@ -1318,7 +1318,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-03-01_1",
@@ -1349,7 +1349,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 19 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 19 screenshots 90°, 3072px, 8k"
     },
     {
      "id": "1-03-01_2",
@@ -1380,7 +1380,7 @@
       "pitchMin": -90.0,
       "pitchMax": 85.0
      },
-     "note": "2026-10-27: 18 screenshots 90°, 3072px, 8k"
+     "note": "2026-11-09: 18 screenshots 90°, 3072px, 8k"
     }
    ],
    "count": 3,
