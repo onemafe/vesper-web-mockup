@@ -1224,7 +1224,7 @@
   const INTROS = [
     // первый — по умолчанию: D с 2026-11-09 (решение пользователя; до этого C)
     { id: 'd', name: 'Начать: D', video: 'Flight/IntroBlendD/intro.mp4', img: 'Static/Intro_StartD.webp', bytes: 13.1e6, strip: 11.3e6 },   // HQ с 2026-11-09 (4K → 2560)
-    { id: 'c', name: 'Начать: C', video: 'Flight/IntroBlend3/intro.mp4', img: 'Static/Intro_Start3.webp', bytes: 16.1e6, strip: 13.6e6 },   // HQ 2026-10-30 (4K → 2560)
+    { id: 'c', name: 'Начать: C', video: 'Flight/IntroBlend3/intro.mp4', img: 'Static/Intro_Start3.webp', bytes: 12.9e6, strip: 10.8e6 },   // HQ 2026-11-10 (4K → 2560; было 2026-10-30)
   ];
   const introIdx = Math.max(0, INTROS.findIndex(v => v.id === qs.get('intro')));
   const PHONE_STRIP_W = 1620;   // ширина полосы пролётов для вертикального телефона, px кадра 3840 (stripFits, introFits)
