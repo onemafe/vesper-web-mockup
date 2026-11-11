@@ -920,6 +920,48 @@
    "equirectYaw": -7.453854366149338
   },
   {
+   "id": "BP_LobbyCamera8_sph_hq_d64",
+   "variantOf": "BP_LobbyCamera8",
+   "variantLabel": "скрины hq d64",
+   "variantNote": "2026-11-10: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py) 6144×3072, exposure frozen at start, hq, d64",
+   "cameraActor": "BP_LobbyCamera8",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8856.353762008372,
+    -532.8628102774767,
+    13765.056777915448
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -28.29635505297002
+   },
+   "equirect": "sph/BP_LobbyCamera8_sph_hq_d64.png",
+   "equirectYaw": -28.29635505297002
+  },
+  {
+   "id": "BP_LobbyCamera8_sph_hq_ml0_d64",
+   "variantOf": "BP_LobbyCamera8",
+   "variantLabel": "скрины hq ml0 d64",
+   "variantNote": "2026-11-10: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py) 6144×3072, exposure frozen at start, hq, ml0, d64",
+   "cameraActor": "BP_LobbyCamera8",
+   "tags": [
+    "Lobby"
+   ],
+   "location": [
+    -8856.308387721556,
+    -532.8135700705394,
+    13765.178628491776
+   ],
+   "startView": {
+    "pitch": 0.0,
+    "yaw": -32.07635383201651
+   },
+   "equirect": "sph/BP_LobbyCamera8_sph_hq_ml0_d64.png",
+   "equirectYaw": -32.07635383201651
+  },
+  {
    "id": "BP_LobbyCamera9",
    "variantLabel": "скрины hq",
    "variantNote": "2026-10-21: 22 screenshots 90° ([(0.0, 8, 0.0), (45.0, 6, 30.0), (-45.0, 6, 30.0), (90.0, 1, 0.0), (-90.0, 1, 0.0)]), 2048px, center-weighted blend (tools/pano_stitch.py), exposure frozen at start, hq",
