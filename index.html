@@ -58,8 +58,7 @@
   #pano { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   /* Облёт в движении — облегчённый кадр в его разрешении, растянут на экран (draw() в скрипте); события — в #pano. */
   #panoLite { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
-  #panoLite.on { display: block; }
-  /* Смена часа перед пролётом: снимок прежнего кадра поверх облёта тает (setHour(h, fade) в скрипте). */
+  #panoLite.on { display: block; }  /* Смена часа перед пролётом: снимок прежнего кадра поверх облёта тает (setHour(h, fade) в скрипте). */
   #hourFade { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
   #hourFade.on { display: block; }
   /* 3D поверх кадра (подсветки квартир), события проходят насквозь в #pano. */
@@ -107,6 +106,26 @@
     background: radial-gradient(farthest-side, transparent 80%, rgba(185, 210, 194, 0.07) 100%);
   }
   .lg.flat { backdrop-filter: none; -webkit-backdrop-filter: none; }   /* frost 0 — фон не размыт */
+  /* Скрыть интерфейс, чтобы смотреть картинку (решение 2026-11-12): кнопка-глаз в левом верхнем углу (#uiHide),
+     на ПК ещё клавиша H. Прячет всё поверх картинки на облёте, карте, этажах, саду, 3D-плане и панорамах; жесты
+     (свайп, зум) работают. Сама кнопка остаётся (полупрозрачной). Телефон / «Мобайл» — под бургером шапки,
+     ПК — в углу окна (меню «верх» — под РУС). Под меню, «О проекте» и стартовым экраном кнопки нет. */
+  .uihide { position: absolute; z-index: 4; left: 21px; top: calc(119px + var(--dt)); width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center; transition: opacity .2s, background-color .2s, color .2s; }
+  #screen.wide .uihide { left: 24px; top: 12px; }
+  #screen.wide[data-nav="top"] .uihide { top: 68px; }
+  .uihide svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .uihide .hid, #screen.noui .uihide .vis { display: none; }
+  #screen.noui .uihide .hid { display: block; }
+  #screen.noui .uihide { opacity: .5; }
+  #screen.noui .uihide:hover { opacity: 1; }
+  #screen:has(.menu.open, .about.open, .start:not(.hidden)) .uihide { display: none; }
+  #screen.noui > :not(canvas, #timeShot, .flight, .mapview, .plan3d, .floors, .gpath, .pano, .start, .about, .menu, .safari, .uihide),
+  #screen.noui > :not(canvas, #timeShot, .flight, .mapview, .plan3d, .floors, .gpath, .pano, .start, .about, .menu, .safari, .uihide) *,
+  #screen.noui :is(.plan3d, .floors, .gpath) :is(.header, .floor-pins, .floor-tabs, .floors-close),
+  #screen.noui :is(.plan3d, .floors, .gpath) :is(.header, .floor-pins, .floor-tabs, .floors-close) *,
+  #screen.noui .pano :is(.pano-nav, .pano-variants, .wv), #screen.noui .pano :is(.pano-nav, .pano-variants, .wv) *,
+  html.noui #devBar { visibility: hidden !important; }
   .lg.on { background-color: rgba(185, 210, 194, 0.7); color: #265746; }
   .lg:active { background-color: rgba(38, 87, 70, 0.4); }   /* Pressed (Map button) */
   .lg.on:active { background-color: rgba(185, 210, 194, 0.5); }
@@ -816,6 +835,10 @@
     <img class="logo" src="assets/logo.svg" alt="Vesper Погодинская">
     <button class="glass ap-open" id="apOpen" aria-label="Фильтры квартир"><img src="assets/icon-filters.svg" alt=""></button>
   </div>
+  <button class="uihide lg" id="uiHide" aria-label="Скрыть интерфейс" aria-pressed="false" title="Скрыть интерфейс (H)">
+    <svg class="vis" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    <svg class="hid" viewBox="0 0 24 24"><path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.6 3.5M6.6 6.6C3.6 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>
+  </button>
 
   <button class="place lg flat garden" data-place="garden"><span class="ico lg"><img src="assets/icon-garden-26.svg" alt=""></span>САД</button>
   <button class="place lg flat lobby" data-place="lobby"><span class="ico lg"><img src="assets/icon-lobby.png" alt=""></span>ЛОББИ</button>
@@ -1076,12 +1099,20 @@
   function pad(n) { return String(n).padStart(3, '0'); }
   const SET = new URLSearchParams(location.search).get('set') || 'HQ';   // ?set=LQ — старый тестовый набор
   // DLSS 5 на облёте 9:00 (решение 2026-11-09, сравнение): варианты orbit_render.py dlss=<ключ> → 360_Test/HQ_dlss_<ключ>
-  // (Intensity / Local Tone). На ПК кнопка в углу перебирает их на месте (setOrbitDlss — как смена часа, с наплывом);
+  // (Intensity / Local Tone). На ПК кнопка в углу перебирает их на месте (setOrbitVariant — как смена часа, с наплывом);
   // ?dlss=1_1|1_0|05_05 — сразу вариант. 17:00 / 23:00 и пролёты — без DLSS. Только набор HQ.
   const ORBIT_DLSS = [{ id: '', name: 'Облёт: без DLSS' }, { id: '1_1', name: 'DLSS: 1 / 1' },
                       { id: '1_0', name: 'DLSS: 1 / 0' }, { id: '05_05', name: 'DLSS: 0.5 / 0.5' }];
   let orbitDlss = SET === 'HQ' ? Math.max(0, ORBIT_DLSS.findIndex(v => v.id && v.id === new URLSearchParams(location.search).get('dlss'))) : 0;
-  const orbitDir = k => `${RENDERS}360_Test/${SET}${ORBIT_DLSS[k].id ? `_dlss_${ORBIT_DLSS[k].id}` : ''}/`;
+  // 2K (решение 2026-11-12): тот же облёт, рендер orbit_render.py render 2k — 1920×1920, папки с суффиксом _2K
+  // (HQ_2K, с DLSS — HQ_dlss_<ключ>_2K, часы — HQ_<час>_2K). На ПК кнопка в углу «Облёт: 4K / 2K» (setOrbitVariant —
+  // на месте, с наплывом); ?res=2k — сразу 2K. Кадр рисуется в долях своей ширины — разрешение набора любое.
+  // Облегчённые кадры и маски у 2K свои (compress_renders.py делает их из HQ_2K так же, 1280 px), предзагрузка — того
+  // набора, с которым открыта страница. Набора 2K нет — переключение не происходит (кнопка: «нет кадров»).
+  const ORBIT_RES = [{ id: '', name: 'Облёт: 4K', suffix: '' }, { id: '2k', name: 'Облёт: 2K', suffix: '_2K' }];
+  let orbitRes = SET === 'HQ' && new URLSearchParams(location.search).get('res') === '2k' ? 1 : 0;
+  const orbitDir = (k, r = orbitRes) =>
+    `${RENDERS}360_Test/${SET}${ORBIT_DLSS[k].id ? `_dlss_${ORBIT_DLSS[k].id}` : ''}${ORBIT_RES[r].suffix}/`;
   const DIR = orbitDir(orbitDlss);
   const set = SETS[SET] || SETS.HQ;
   const DEG_PER_PX = 0.35;   // сколько градусов облёта на пиксель свайпа (в координатах экрана 430×932)
@@ -1204,6 +1235,10 @@
   // На ПК кнопка в углу окна переключает вид: «ПК» — широкий, на всё окно; «Мобайл» — экран макета 430×932
   // с нарисованной адресной строкой Safari, вписан в окно. ?sim=1 — сразу «Мобайл».
   const SIMS = [{ name: 'ПК' }, { name: 'Мобайл', mobile: true }];
+  // Чёткая картинка (решение 2026-11-12, см. placeScreen и draw): экран через CSS zoom + кадр облёта на целых пикселях.
+  // false — как раньше (transform: scale, дробный сдвиг кадра) — для сравнения: на ПК кнопка «Картинка: …» справа
+  // внизу, ?sharp=0 — сразу как раньше.
+  let SHARP = qs.get('sharp') !== '0';
   // Карточка квартиры телефона: «Было» — прежняя по макету Figma, «Стало» — новая в двух вариантах листания (свайп /
   // стрелки, см. aptCarousel). На ПК кнопка рядом с «ПК / Мобайл» перебирает их, видна только при «Мобайл» и открытой
   // карточке; ?popup=old|swipe|arrows — сразу нужный (и на телефоне).
@@ -1233,6 +1268,7 @@
   screen.dataset.nav = PHONE ? 'burger' : NAVS[nav].id;
   if (!PHONE) {
     const bar = document.body.appendChild(Object.assign(document.createElement('div'), {
+      id: 'devBar',   // прячется вместе с интерфейсом (#uiHide)
       style: 'position:fixed;right:12px;bottom:12px;z-index:100;display:flex;gap:8px',   // внизу — не мешает строке меню
     }));
     const button = onclick => bar.appendChild(Object.assign(document.createElement('button'), {
@@ -1240,10 +1276,21 @@
         'font:500 14px Manrope,system-ui,sans-serif;color:#b9d2c2;background:rgba(38,87,70,.85)',
       onclick,
     }));
-    // DLSS облёта 9:00 (ORBIT_DLSS): по кругу без DLSS → 1/1 → 1/0 → 0.5/0.5, на месте (setOrbitDlss).
+    // DLSS облёта 9:00 (ORBIT_DLSS): по кругу без DLSS → 1/1 → 1/0 → 0.5/0.5, на месте (setOrbitVariant).
     if (SET === 'HQ') {
-      const ob = button(() => { setOrbitDlss((orbitDlss + 1) % ORBIT_DLSS.length); ob.textContent = ORBIT_DLSS[orbitDlss].name; });
+      const ob = button(() => {
+        const k = (orbitDlss + 1) % ORBIT_DLSS.length;
+        variantButton(ob, () => setOrbitVariant(k, orbitRes), () => ORBIT_DLSS[orbitDlss].name,
+                      `${ORBIT_DLSS[k].name}${ORBIT_RES[orbitRes].suffix ? ' 2K' : ''}`);
+      });
       ob.textContent = ORBIT_DLSS[orbitDlss].name;
+      // 2K / 4K облёта (ORBIT_RES): на месте, как DLSS; набора нет — на секунду «нет кадров», остаётся прежний
+      const rb = button(() => {
+        const r = (orbitRes + 1) % ORBIT_RES.length;
+        variantButton(rb, () => setOrbitVariant(orbitDlss, r), () => ORBIT_RES[orbitRes].name,
+                      `${ORBIT_RES[r].name}${ORBIT_DLSS[orbitDlss].id ? ' + DLSS' : ''}`);
+      });
+      rb.textContent = ORBIT_RES[orbitRes].name;
     }
     const ib = button(() => {
       const q = new URLSearchParams(location.search);
@@ -1255,6 +1302,10 @@
     const ibShow = () => { ib.style.display = startEl.classList.contains('hidden') ? 'none' : ''; };
     new MutationObserver(ibShow).observe(startEl, { attributes: true, attributeFilter: ['class'] });
     ibShow();
+    // Сравнение чёткости (SHARP): на месте, без перезагрузки — fit() переставляет экран и перерисовывает кадр.
+    const sb = button(() => { SHARP = !SHARP; sb.textContent = sharpName(); fit(); gardenRefit(); });
+    const sharpName = () => SHARP ? 'Картинка: чёткая' : 'Картинка: как раньше';
+    sb.textContent = sharpName();
     const nb = button(() => { nav = (nav + 1) % NAVS.length; nb.textContent = NAVS[nav].name; screen.dataset.nav = NAVS[nav].id; fit(); });
     const b = button(() => {
       sim = (sim + 1) % SIMS.length; b.textContent = SIMS[sim].name;
@@ -1276,6 +1327,25 @@
     nb.textContent = NAVS[nav].name;
     nb.style.visibility = SIMS[sim].mobile ? 'hidden' : '';
     b.textContent = SIMS[sim].name;
+  }
+  // Экран дизайна масштабируется под окно через CSS zoom, а не transform: scale (решение 2026-11-12). При transform
+  // браузер рисует картинки (облёт, этажи, сад, карту, видео) в размере дизайна и потом растягивает готовый слой —
+  // второе пересэмплирование, кадр заметно мыльнее того же WebP по прямой ссылке (замер: резкость 804 против 891 в
+  // окне 1920×1080; при масштабе ровно 1 — совпадение пиксель в пиксель). С zoom раскладка сразу в размере окна и
+  // картинка уменьшается один раз (897 / 891). Угол экрана — на целом пикселе устройства. Браузер со старой
+  // семантикой zoom (координаты getBoundingClientRect не в пикселях окна) — проверка ниже, возврат к transform.
+  // SHARP = false (кнопка «Картинка: как раньше», ?sharp=0) — прежний transform (сравнение).
+  let ZOOM_CSS = CSS.supports('zoom', '2');   // false — браузер без zoom или со старой семантикой
+  function placeScreen(cy) {
+    const dpr = devicePixelRatio || 1, snap = v => Math.round(v * dpr) / dpr;
+    const L = snap(innerWidth / 2 - W * scale / 2), T = snap(cy - H * scale / 2);
+    if (ZOOM_CSS && SHARP) {
+      Object.assign(screen.style, { transform: 'none', zoom: scale, left: `${L / scale}px`, top: `${T / scale}px` });
+      const r = screen.getBoundingClientRect();
+      if (Math.abs(r.left - L) <= 1 && Math.abs(r.top - T) <= 1 && Math.abs(r.width - W * scale) <= 1) return;
+      ZOOM_CSS = false;   // старая семантика zoom — координаты разошлись, остаёмся на transform
+    }
+    Object.assign(screen.style, { zoom: '', left: '50%', top: `${cy}px`, transform: `translate(-50%, -50%) scale(${scale})` });
   }
   function fit() {
     const s = SIMS[sim];
@@ -1315,13 +1385,12 @@
       db = H_DESIGN - H_CONTENT;   // низ макета — к низу окна (адресная строка Safari на ПК не рисуется)
       if (screen.dataset.nav === 'top') dt = NAV_TOP_DT;
     }
-    screen.style.top = top;
     screen.style.width = `${W}px`;
     screen.style.height = `${H}px`;
     screen.style.setProperty('--dt', `${dt}px`);
     screen.style.setProperty('--db', `${db}px`);
     screen.style.setProperty('--dx', `${(W - W_DESIGN) / 2}px`);   // сдвиг элементов, прибитых к x макета 430, к центру
-    screen.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    placeScreen(top ? parseFloat(top) : innerHeight / 2);
     if (vpDebug) vpDebug.textContent = vpInfo;
     screen.dispatchEvent(new Event('layout'));   // ПК ↔ телефон: приближение выбранной квартиры (только на телефоне)
     const dpr = Math.min(devicePixelRatio * scale, 3);
@@ -1333,6 +1402,20 @@
   }
 
   function showHint(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
+
+  // --- Скрыть интерфейс (кнопка-глаз #uiHide, на ПК клавиша H в любой раскладке), CSS — .uihide / .noui ---
+  const uiHide = document.getElementById('uiHide');
+  function setNoUi(on) {
+    screen.classList.toggle('noui', on);
+    document.documentElement.classList.toggle('noui', on);   // кнопки проверки в углу окна (#devBar)
+    const label = on ? 'Показать интерфейс' : 'Скрыть интерфейс';
+    uiHide.setAttribute('aria-pressed', on); uiHide.setAttribute('aria-label', label); uiHide.title = label + ' (H)';
+  }
+  uiHide.addEventListener('click', () => setNoUi(!screen.classList.contains('noui')));
+  addEventListener('keydown', e => {
+    if (e.code !== 'KeyH' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    setNoUi(!screen.classList.contains('noui'));
+  });
 
   // --- Загрузка кадров: постепенно, по приоритету; пробуем все номера набора, берём те, что есть ---
   // Порядок: кадры рядом с текущим углом, затем грубый круг через 30° (облёт сразу крутится целиком — показывается
@@ -1695,14 +1778,15 @@
     if (bucket !== pumpedAt) { pumpedAt = bucket; pump(); }
     // Источник — распакованная полоса кадра: полный, облегчённый или, у приближенного стоящего облёта, полный в
     // полном разрешении (когда распакуется). В движении — облегчённый, если он закрывает весь холст.
-    if (view.zoom <= 1.01) dropSharp(cur);
+    const zoom = view.zoom * userZoom;   // приближение квартиры × зум колесом
+    if (zoom <= 1.01) dropSharp(cur);
     const moving = performance.now() - movedAt < STILL_MS;
-    const sharp = view.zoom > 1.01 && !tween && !dragging && !moving && cur.frames.has(i) && sharpFrame(cur, i);
+    const sharp = zoom > 1.01 && !tween && !dragging && !moving && cur.frames.has(i) && sharpFrame(cur, i);
     const full = sharp || cur.bitmaps.get(i), lite = cur.motion.bitmaps.get(i), any = full || lite;
     const mask = cur.masks.get(i) || null;
     // Положение кадра на холсте не зависит от разрешения источника — считается по любому.
     const baseH = Math.min(any.fh, any.fw / ORBIT_BASE_ASPECT);   // основной кадр, px картинки
-    const k0 = Math.max(canvas.width / any.fw, canvas.height / baseH) * view.zoom;
+    const k0 = Math.max(canvas.width / any.fw, canvas.height / baseH) * zoom;
     const w = any.fw * k0, h = any.fh * k0;
     // Кадр сдвигается вверх на lift высоты основного кадра. Верхний край картинки не открываем; нижний может открыться
     // (дом поднят выше, чем позволяет запас) — полосу под кадром закрывает его зеркальное отражение с затемнением.
@@ -1732,7 +1816,14 @@
     const gap = canvas.height - (y + h);
     const bh = src.bmp.height, ky = bh / src.sh, bx = x + src.sx * k, bw = src.sw * k;   // полоса источника на холсте
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(src.bmp, bx, y + src.sy * k, bw, src.sh * k);
+    // Распакованная полоса уже в масштабе холста (±1 px) — кладётся 1:1 на целые пиксели (решение 2026-11-12): дробный
+    // сдвиг (на телефоне x = −1114.5) и растяжение на долю пикселя пересэмплировали весь кадр — заметное мыло.
+    // Сдвиг до 0.5 px против x, y 3D-слоя не виден. Приближение / облегчённый кадр — растягиваются как раньше.
+    let dx = bx, dy = y + src.sy * k, dw = bw, dh = src.sh * k;
+    if (SHARP && Math.abs(src.bmp.width - dw) < 1.5 && Math.abs(bh - dh) < 1.5) {
+      dx = Math.round(dx); dy = Math.round(dy); dw = src.bmp.width; dh = bh;
+    }
+    ctx.drawImage(src.bmp, dx, dy, dw, dh);
     if (gap > 0) {
       const rows = Math.min(src.sh, gap / k);   // столько строк снизу кадра отражаем
       ctx.save();
@@ -1760,6 +1851,19 @@
   // --- Приближение в режиме «квартиры»: плавный переход между общим видом и APT_VIEW ---
   const BASE_VIEW = { zoom: 1, lift: 0 };
   let view = { ...BASE_VIEW }, tween = null;
+  // --- Зум облёта колесом мыши / жестом тачпада (решение 2026-11-12) ---
+  // Приближает к середине картинки (кадр остаётся по центру экрана), поверх приближения квартиры. От 1 (общий вид,
+  // меньше нельзя) до ZOOM_MAX (?zoommax=); на 1080p-окне 2 — это 1:1 пикселю 4K-кадра. Зум догоняет колесо за
+  // ZOOM_FOLLOW_MS; остановились — draw() подставляет кадр в полном разрешении (sharpFrame), как у приближения
+  // квартиры. Поворот свайпом работает и приближенным. Перед пролётом зум возвращается к 1 (flyTo).
+  const ZOOM_MAX = +qs.get('zoommax') || 3, ZOOM_FOLLOW_MS = 90;
+  let userZoom = 1, userZoomTarget = 1;
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+    userZoomTarget = Math.min(ZOOM_MAX, Math.max(1, userZoomTarget * Math.exp(-dy * 0.0015)));
+  }, { passive: false });
+  function resetUserZoom() { userZoomTarget = 1; }
   function setView(target, ms = VIEW_MS) {
     tween = { from: { ...view }, to: target, t0: performance.now(), ms };
   }
@@ -1829,6 +1933,11 @@
       movedAt = now;
       draw();
     } else if (liteShown && now - movedAt >= STILL_MS) draw();   // остановился — полный кадр вместо облегчённого
+    if (userZoom !== userZoomTarget) {
+      const d = userZoomTarget - userZoom;
+      userZoom = Math.abs(d) < 0.002 ? userZoomTarget : userZoom + d * (1 - Math.exp(-dt / ZOOM_FOLLOW_MS));
+      draw();
+    }
     stepView(now);
     requestAnimationFrame(tick);
   })(performance.now());
@@ -1843,6 +1952,10 @@
   const timeSets = { 9: cur };
   let hour = 9, hourReq = 0;
   async function hourSet(h) {
+    if (!timeSets[h] && SET !== 'LQ' && orbitRes) {   // 2K: набор часа в 2K, если отрендерен; нет — 4K (ниже)
+      const s = makeSet(`${RENDERS}360_Test/HQ_${h}${ORBIT_RES[orbitRes].suffix}/`, SETS.HQ);
+      if (await fetch(s.dir + s.def.file(0), { method: 'HEAD' }).then(r => r.ok, () => false)) timeSets[h] ||= s;
+    }
     if (!timeSets[h]) {
       let s = makeSet(`${RENDERS}360_Test/${SET === 'LQ' ? 'LQ' : 'HQ'}_${h}/`, SET === 'LQ' ? SETS.LQ : SETS.HQ);
       if (SET !== 'LQ' && !await fetch(s.dir + s.def.file(0), { method: 'HEAD' }).then(r => r.ok, () => false)) {
@@ -1901,16 +2014,34 @@
     await new Promise(r => setTimeout(r, HOUR_FADE_MS));
     hourFade.classList.remove('on');
   }
-  // DLSS облёта (ORBIT_DLSS): вариант — свой набор 9:00; наборы вариантов остаются в orbitDlssSets (как часы в timeSets).
-  // Открыт 9:00 — смена с наплывом, как у часа; открыт другой час — новый вариант появится при возврате к 9:00.
-  const orbitDlssSets = { [orbitDlss]: cur };
-  function setOrbitDlss(k) {
-    orbitDlss = k;
-    timeSets[9] = orbitDlssSets[k] ||= makeSet(orbitDir(k), set);
+  // Варианты облёта 9:00 — DLSS (ORBIT_DLSS) × разрешение (ORBIT_RES): у каждого свой набор, они остаются в orbitSets
+  // (как часы в timeSets). Открыт 9:00 — смена с наплывом, как у часа; открыт другой час — DLSS появится при возврате
+  // к 9:00, а смена разрешения сразу меняет и набор часа (HQ_<час>_2K, если есть). Набора варианта нет (HEAD кадра 0
+  // не ответил) — ничего не меняется, возвращает false.
+  const orbitSets = { [`${orbitDlss}|${orbitRes}`]: cur };
+  let orbitVarReq = 0;
+  async function setOrbitVariant(k, r) {
+    const req = ++orbitVarReq, key = `${k}|${r}`;
+    if (!orbitSets[key] && !await fetch(orbitDir(k, r) + set.file(0), { method: 'HEAD' }).then(x => x.ok, () => false)) return false;
+    if (req !== orbitVarReq) return false;
+    const resChanged = r !== orbitRes;
+    orbitDlss = k; orbitRes = r;
+    timeSets[9] = orbitSets[key] ||= makeSet(orbitDir(k, r), set);
+    if (resChanged) { delete timeSets[17]; delete timeSets[23]; }   // наборы часов — заново, в новом разрешении
     const q = new URLSearchParams(location.search);
     if (ORBIT_DLSS[k].id) q.set('dlss', ORBIT_DLSS[k].id); else q.delete('dlss');
+    if (ORBIT_RES[r].id) q.set('res', ORBIT_RES[r].id); else q.delete('res');
     history.replaceState(null, '', `${location.pathname}?${q}`.replace(/\?$/, ''));
-    if (hour === 9) setHour(9, true);
+    if (hour === 9 || resChanged) setHour(hour, true);
+    return true;
+  }
+  // Кнопка варианта в углу (DLSS, 2K): пока проверяется набор — «…», нет набора — «<куда переключали> — нет кадров»
+  // на 1.5 с (target), потом снова текущий вариант.
+  async function variantButton(b, change, name, target) {
+    b.textContent = '…';
+    const ok = await change();
+    b.textContent = ok ? name() : `${target} — нет кадров`;
+    if (!ok) setTimeout(() => { b.textContent = name(); }, 1500);
   }
   for (const b of timebar.querySelectorAll('.pt')) b.onclick = () => setHour(+b.dataset.hour);
   lightBtn.onclick = () => {
@@ -2025,6 +2156,10 @@
     }
     ts.drawn = key;
     ts.paint = { bmp: src.bmp, dx: x + src.sx * k, dy: y + src.sy * k, dw: src.sw * k, dh: src.sh * k };
+    const pp = ts.paint;   // полоса в масштабе холста — 1:1 на целые пиксели, как у облёта (SHARP, draw())
+    if (SHARP && Math.abs(src.bmp.width - pp.dw) < 1.5 && Math.abs(src.bmp.height - pp.dh) < 1.5) {
+      Object.assign(pp, { dx: Math.round(pp.dx), dy: Math.round(pp.dy), dw: src.bmp.width, dh: src.bmp.height });
+    }
     tsPaint();
   }
   // Проявление кадра часа (решение 2026-10-27; у облёта перетекания нет — решение 2026-10-21). ?tsfade=мс, 0 — без него.
@@ -3411,7 +3546,8 @@
       screen.dispatchEvent(new Event('apartmentclear'));
       setMap(false);
       closeTimeSlider();     // пролёт — от облёта в его часе
-      await waitFor(() => !tween, 1000);
+      resetUserZoom();       // видео начинается с общего вида — зум колесом к 1
+      await waitFor(() => !tween && userZoom === 1, 1000);
       if (hour !== 9) await setHour(9, true);   // видео пролётов — в 9:00: кадр часа тает в 9:00, потом пролёт
       await rotateTo(f.angle);
       await waitFor(() => shown === f.angle, 3000);

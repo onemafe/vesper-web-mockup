@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Последний кадр видео</title>
+<!-- Проверка (2026-11-12): видео пролёта, остановленное на последнем кадре, — чтобы сравнить его с картинкой экрана
+     (Floors_Test/*.webp по прямой ссылке), перещёлкивая вкладки. Кадр показывается как браузер показывает картинку:
+     вписан в окно, не крупнее 100 %, по центру; рамка — как у картинки (середина 16:9 кадра 4:3 видео).
+     ?v=lobby|garden|garden_mobile; ?img=1 — вместо видео та же картинка в той же рамке. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #0e0e0e; overflow: hidden; }
+  #box { position: absolute; overflow: hidden; }
+  #box > * { display: block; width: 100%; height: 100%; object-fit: cover; }
+  #info { position: fixed; left: 8px; bottom: 8px; font: 12px/1.3 system-ui, sans-serif; color: #888; }
+</style>
+</head>
+<body>
+<div id="box"></div>
+<div id="info">Загрузка…</div>
+<script>
+  const SETS = {
+    lobby:         { video: 'renders/Flight/LobbyEntryBlend/lobby.mp4',        img: 'renders/Floors_Test/floor_F1_entry.webp',     w: 3840, h: 2160 },
+    garden:        { video: 'renders/Flight/Garden/garden.mp4',                img: 'renders/Floors_Test/garden_K.webp',           w: 3840, h: 2160 },
+    garden_mobile: { video: 'renders/Flight/GardenMobile/garden_mobile.mp4',   img: 'renders/Floors_Test/garden_K_mobile.webp',    w: 2160, h: 3840 },
+  };
+  const qs = new URLSearchParams(location.search);
+  const s = SETS[qs.get('v')] || SETS.lobby, useImg = qs.get('img') === '1';
+  const box = document.getElementById('box'), info = document.getElementById('info');
+  function fit() {   // как просмотр картинки в браузере: вписать в окно, не крупнее размера картинки
+    // Целые пиксели, как у браузера (картинка 1722.66 → 1722 px, левый край 99): иначе при перещёлкивании вкладок
+    // кадр прыгает на пиксель, а дробное положение ещё и размывает его.
+    const k = Math.min(1, innerWidth / s.w, innerHeight / s.h);
+    const w = Math.floor(s.w * k + 1e-6), h = Math.floor(s.h * k + 1e-6);   // 968.9999… → 969, как у браузера
+    Object.assign(box.style, { width: `${w}px`, height: `${h}px`,
+      left: `${Math.round((innerWidth - w) / 2)}px`, top: `${Math.round((innerHeight - h) / 2)}px` });
+    paint();
+  }
+  // Кадр видео — на холст точной вырезкой (видео 4:3 у картинки 16:9: середина 16:9, строки 1/8…7/8 кадра). Сам <video>
+  // браузер рисует отдельным слоем и ставит на целый пиксель: при окне 969 px верх середины 16:9 — на −161.5 px, и кадр
+  // съезжал на полпикселя относительно картинки.
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  let frame = null;   // <video> на последнем кадре
+  function paint() {
+    if (!frame) return;
+    const r = box.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    const vw = frame.videoWidth, vh = frame.videoHeight, crop = s.w > s.h && vw < vh * 1.5;
+    const sy = crop ? vh / 8 : 0, sh = crop ? vh * 3 / 4 : vh;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(frame, 0, sy, vw, sh, 0, 0, cv.width, cv.height);
+  }
+  addEventListener('resize', fit); fit();
+  if (useImg) {
+    const im = new Image(); im.src = s.img; box.append(im);
+    im.onload = () => info.textContent = `картинка ${s.img} (${im.naturalWidth}×${im.naturalHeight})`;
+  } else {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; box.append(cv);
+    // Целиком в Blob, как в макете (blobVideo): локальный serve.cmd не отдаёт Range — без этого перемотка не работает.
+    fetch(s.video).then(r => r.blob()).then(b => { v.src = URL.createObjectURL(b); });
+    v.addEventListener('loadedmetadata', () => { v.currentTime = Math.max(0, v.duration - 0.001); });
+    v.addEventListener('seeked', () => {
+      frame = v; paint();
+      info.textContent = `видео ${s.video} (${v.videoWidth}×${v.videoHeight}), последний кадр, t = ${v.currentTime.toFixed(3)} из ${v.duration.toFixed(3)} с`;
+    });
+  }
+</script>
+</body>
+</html>
